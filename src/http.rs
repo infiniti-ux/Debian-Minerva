@@ -294,6 +294,7 @@ fn api(req: &Request, srv: &Server) -> Response {
         ("GET", "/api/v1/apps") => ok(Value::obj(vec![("apps", catalog_json())])),
         ("GET", "/api/v1/desktop-apps") => ok(srv.exec.desktop_apps()),
         ("GET", "/api/v1/running") => ok(srv.exec.running_json()),
+        ("GET", "/api/v1/events") => ok(srv.exec.take_events()),
         ("GET", "/api/v1/state") => {
             let state = srv.state.lock().unwrap();
             ok(state.snapshot())
@@ -353,6 +354,13 @@ fn api(req: &Request, srv: &Server) -> Response {
             if !sys.is_empty() { return ok(srv.exec.sys(&sys, &v)); }
             let cmd = v.get("cmd").as_str().to_string();
             if !cmd.is_empty() { return ok(srv.exec.session_cmd(&cmd)); }
+            let ev = v.get("event").as_str().to_string();
+            if !ev.is_empty() { return ok(srv.exec.push_event(&ev)); }
+            let win_op = v.get("win_op").as_str().to_string();
+            if !win_op.is_empty() {
+                let win_id = v.get("win_id").as_str().to_string();
+                return ok(srv.exec.window_op(&win_op, &win_id));
+            }
             if v.get("panel_close").as_bool() { return ok(srv.exec.close_panels()); }
             let panel = v.get("panel").as_str().to_string();
             if !panel.is_empty() { return ok(srv.exec.open_panel(&panel)); }

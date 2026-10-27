@@ -97,29 +97,33 @@ Play Store, Google Search bar, or Google account flows. Replacements:
 A display manager (GDM, LightDM, SDDM) starts the **Minerva** session from
 `/usr/share/xsessions/minerva.desktop`, whose `Exec` is `/usr/bin/minerva-session`:
 
-1. The script detects screen geometry (xrandr/xdpyinfo), writes an Openbox
-   `rc.xml` with pixel-exact rules for every Minerva surface, and mints a
+1. The script detects screen geometry (xrandr/xdpyinfo), writes the Openbox
+   `rc.xml` plus the bundled slim dark "Minerva" Openbox theme, autostarts
+   standard desktop services (dunst, parcellite, polkit agent) and mints a
    per-session token (`$XDG_RUNTIME_DIR/minerva/session.env`, mode 600).
 2. It starts `minerva-sessiond` bound to `127.0.0.1:47801` (env
    `MINERVA_SESSION_MODE=x11`, `MINERVA_BROWSER`, `MINERVA_SESSION_PID`).
    A supervisor loop restarts the daemon if it crashes.
-3. **Openbox** starts as the window manager, then the shell is opened as
-   three native X windows from one Chromium profile:
-   `#desktop` (fullscreen, bottom layer), `#topbar` (always-on-top strip) and
-   `#dock` (full-width taskbar flush to the bottom). Each window is the same
-   `index.html`; the `#role` hash decides which surface it renders
-   (`html[data-mode]` CSS gating).
-4. On-demand surfaces (launcher, Wi-Fi, audio, battery, calendar, power,
-   notifications, settings) are opened by the daemon as real X windows
-   (`POST /api/v1/exec {panel}`) with per-role WM_CLASS; Openbox rules place
-   them. They close on blur/Esc like real DE popovers.
+3. **Openbox** starts as the window manager, then the shell is opened as ONE
+   fullscreen surface (`chromium --kiosk`, WM_CLASS/title `minerva-shell`,
+   matched by an Openbox rule that keeps it undecorated, out of the taskbar
+   and in the below layer). That single surface draws the entire Minerva
+   desktop: wallpaper, top bar, full-width taskbar dock, launcher, popovers,
+   notification shade and settings — a kiosk window is fullscreen by itself
+   on any stack, so desktop-surface placement can never fail again.
+4. Real applications run as ordinary X clients on top (xterm/xfce4-terminal,
+   pcmanfm, chromium --app, ...). The dock taskbar mirrors the window
+   manager through the EWMH `_NET_CLIENT_LIST` (xprop): click focuses/raises,
+   right-click closes (wmctrl). WM-originated actions (Super key) reach the
+   shell through the event queue (`POST /exec {event}` → `GET /events`).
 5. Every `/api/v1/*` call except health requires the session token
    (`X-Minerva-Token` header or `?token=`). Without X11/Openbox the session
    falls back to a single-window kiosk (`session_mode=kiosk`, cage/weston on
    Wayland).
 6. Logging out (`minerva-ctl cmd logout` → daemon kills the session pid),
-   closing the desktop window, or a DM logout ends the script; its trap stops
-   the panel process, Openbox and the daemon (which persists `session.json`).
+   closing the shell surface, or a DM logout ends the script; its trap stops
+   the autostart services, Openbox and the daemon (which persists
+   `session.json`).
 
 ## Real system layer (`src/exec.rs`)
 

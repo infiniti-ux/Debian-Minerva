@@ -274,18 +274,22 @@
   }
 
   function popover(name, sel) {
-    if (X11) { openPanelGuarded(name); return; }
     if (window.PanelWin) PanelWin.fill(name, $(sel));
     togglePanel(sel);
   }
 
   function refreshRunning() {
     if (!X11) return;
-    API.running().then(function (list) {
+    API.running().then(function (j) {
       REAL_RUNNING = {};
-      (list || []).forEach(function (a) { REAL_RUNNING[a.id] = true; });
+      ((j && j.apps) || []).forEach(function (a) { REAL_RUNNING[a.id] = true; });
+      S.realwins = (j && j.windows) || [];
       if (!MODE || MODE === 'dock' || MODE === 'desktop') renderDock();
     });
+  }
+
+  function winForApp(id) {
+    return (S.realwins || []).filter(function (w) { return w.app === id; })[0];
   }
 
   function startPolling() {
@@ -301,6 +305,17 @@
       });
     }, 2500);
     setInterval(refreshRunning, 4000);
+    setInterval(function () {
+      if (!X11) return;
+      API.events().then(function (evs) {
+        (evs || []).forEach(function (ev) {
+          if (ev === 'launcher') {
+            dispatch({ type: 'launcher' });
+            setTimeout(function () { var li = $('#launcher-input'); if (li) li.focus(); }, 30);
+          } else if (ev === 'overview') dispatch({ type: 'overview' });
+        });
+      });
+    }, 1200);
     if (!MODE || MODE === 'desktop') {
       // JS-window fallbacks requested from panel windows (launcher, dock)
       setInterval(function () {
@@ -315,7 +330,9 @@
 
   function openApp(id, arg) {
     if (X11) {
-      if (id === 'settings') { openPanelGuarded('settings'); return; }
+      if (id === 'settings') { dispatch({ type: 'launch', app: id }); return; }
+      var fw = winForApp(id);
+      if (fw && !arg) { API.exec({ win_op: 'focus', win_id: fw.id }); return; }
       API.execApp(id, arg).then(function (r) {
         if (r && r.ok) { refreshRunning(); if (MODE === 'launcher') PanelWin.selfClose(); return; }
         if (r && r.hint) { toast(r.hint); if (MODE === 'launcher') PanelWin.selfClose(); return; }
@@ -592,6 +609,7 @@
   }
 
   function renderDock() {
+    if (X11) { renderDockReal(); return; }
     var running = S.windows.filter(function (w) { return w.workspace === S.active_workspace; });
     var pinned = S.pinned.filter(function (id) { return appById(id); });
     var extra = running.filter(function (w) { return pinned.indexOf(w.app) === -1; }).map(function (w) { return w.app; });
@@ -604,6 +622,30 @@
         var isRun = !!w || !!REAL_RUNNING[id];
         return '<button class="dock-item ' + (isRun ? 'running' : '') + ' ' + (w && isFocused(w) && w.state !== 'minimized' ? 'active' : '') + '" data-app="' + id + '" title="' + esc(appName(id)) + '">' +
           I.appArt(id, 28) + '</button>';
+      }).join('');
+    $('#dock').innerHTML = html;
+    I.hydrate($('#dock'));
+  }
+
+  // X11: the dock taskbar mirrors the window manager's real client list.
+  function renderDockReal() {
+    var wins = S.realwins || [];
+    var pinned = S.pinned.filter(function (id) { return appById(id); });
+    if (pinned.indexOf('settings') === -1) pinned.push('settings');
+    var extra = wins.filter(function (w) { return !w.app || pinned.indexOf(w.app) === -1; });
+    var html = '<button class="dock-item" id="dock-launcher" title="App launcher (Super)">' + I.svg('grid', 23) + '</button>' +
+      '<span class="dock-sep"></span>' +
+      pinned.map(function (id) {
+        var w = winForApp(id);
+        var isRun = !!w || !!REAL_RUNNING[id];
+        return '<button class="dock-item ' + (isRun ? 'running' : '') + ' ' + (w && w.focused ? 'active' : '') + '" data-app="' + id + '" data-win="' + (w ? w.id : '') + '" title="' + esc(appName(id)) + '">' +
+          I.appArt(id, 28) + '</button>';
+      }).join('') +
+      extra.map(function (w) {
+        var letter = esc(String(w.title || w.class || '?').trim().charAt(0).toUpperCase());
+        var glyph = w.app ? I.appArt(w.app, 28)
+          : '<span style="display:flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:7px;background:#2a2f40;color:#e8eaf2;font-size:13px;font-weight:600">' + letter + '</span>';
+        return '<button class="dock-item running ' + (w.focused ? 'active' : '') + '" data-win="' + w.id + '" title="' + esc(w.title || w.class) + ' (right-click to close)">' + glyph + '</button>';
       }).join('');
     $('#dock').innerHTML = html;
     I.hydrate($('#dock'));
@@ -793,7 +835,7 @@
   function wire() {
     // statusbar — every icon opens its own dedicated popover with real data
     $('#sb-clock').addEventListener('click', function () { popover('calendar', '#calendar-pop'); });
-    $('#sb-notif').addEventListener('click', function () { if (X11) openPanelGuarded('shade'); else togglePanel('#notif-panel'); });
+    $('#sb-notif').addEventListener('click', function () { togglePanel('#notif-panel'); });
     $('#sb-wifi').addEventListener('click', function () { popover('wifi', '#wifi-pop'); });
     $('#sb-audio').addEventListener('click', function () { popover('audio', '#audio-pop'); });
     $('#sb-battery').addEventListener('click', function () { popover('battery', '#battery-pop'); });
@@ -808,7 +850,7 @@
         '<button class="ctx-item" data-p="shutdown">' + I.svg('power', 16) + 'Shut down</button>'
       ].join(''), window.innerWidth - 230, 42, '#power-menu');
     });
-    $('#sb-activities').addEventListener('click', function () { if (X11) openPanelGuarded('launcher'); else dispatch({ type: 'overview' }); });
+    $('#sb-activities').addEventListener('click', function () { dispatch({ type: 'launcher' }); setTimeout(function () { var li = $('#launcher-input'); if (li) li.focus(); }, 30); });
     $('#qs-power').addEventListener('click', function () { power('shutdown'); });
 
     // quick settings
@@ -834,14 +876,27 @@
     // dock
     $('#dock').addEventListener('click', function (e) {
       if (e.target.closest('#dock-launcher')) {
-        if (X11) openPanelGuarded('launcher');
-        else { dispatch({ type: 'launcher' }); setTimeout(function () { $('#launcher-input').focus(); }, 30); }
+        dispatch({ type: 'launcher' });
+        setTimeout(function () { var li = $('#launcher-input'); if (li) li.focus(); }, 30);
+        return;
+      }
+      var item = e.target.closest('.dock-item');
+      if (X11 && item && item.dataset.win && item.classList.contains('running')) {
+        API.exec({ win_op: 'focus', win_id: item.dataset.win });
         return;
       }
       var b = e.target.closest('[data-app]'); if (!b) return;
       var w = S.windows.filter(function (x) { return x.app === b.dataset.app && x.workspace === S.active_workspace; })[0];
       if (w && isFocused(w) && w.state !== 'minimized') dispatch({ type: 'minimize', id: w.id });
       else openApp(b.dataset.app);
+    });
+    $('#dock').addEventListener('contextmenu', function (e) {
+      var item = e.target.closest('.dock-item');
+      if (item && item.dataset.win) {
+        e.preventDefault();
+        API.exec({ win_op: 'close', win_id: item.dataset.win });
+        setTimeout(refreshRunning, 500);
+      }
     });
 
     // launcher

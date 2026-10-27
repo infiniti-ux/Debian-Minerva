@@ -27,6 +27,8 @@ pub struct Exec {
     panels_pid: Mutex<Option<u32>>,
     /// fallback requests from panel windows, consumed by the desktop window
     pending: Mutex<Vec<String>>,
+    /// shell events queued for the shell surface (Super key -> launcher, ...)
+    events: Mutex<Vec<String>>,
     icon_cache: Mutex<HashMap<String, Option<(&'static str, Vec<u8>)>>>,
 }
 
@@ -142,6 +144,7 @@ impl Exec {
             launched: Mutex::new(Vec::new()),
             panels_pid: Mutex::new(None),
             pending: Mutex::new(Vec::new()),
+            events: Mutex::new(Vec::new()),
             icon_cache: Mutex::new(HashMap::new()),
         }
     }
@@ -207,14 +210,123 @@ impl Exec {
         if l.len() > 64 { let drain = l.len() - 64; l.drain(0..drain); }
     }
 
+    /// Live window list. In an X11 session this mirrors whatever the window
+    /// manager actually manages (EWMH _NET_CLIENT_LIST), so the dock taskbar
+    /// shows every real window — not just processes this daemon spawned.
     pub fn running_json(&self) -> Value {
+        let mut wins: Vec<Value> = Vec::new();
+        let mut apps: Vec<String> = Vec::new();
+        if self.session_mode == "x11" {
+            let active = Self::xprop_hex(&run_out("xprop -root _NET_ACTIVE_WINDOW 2>/dev/null"));
+            let clients = run_out("xprop -root _NET_CLIENT_LIST 2>/dev/null");
+            for hex in clients.split('#').skip(1)
+                .map(|t| t.chars().take_while(|c| c.is_ascii_hexdigit()).collect::<String>())
+                .filter(|h| !h.is_empty())
+            {
+                let out = run_out(&format!("xprop -id 0x{} _NET_WM_NAME WM_CLASS 2>/dev/null", hex));
+                let title = Self::xprop_first(&out, "_NET_WM_NAME");
+                let class = Self::xprop_second(&out, "WM_CLASS");
+                // the fullscreen shell surface is not a taskbar entry
+                if class.starts_with("minerva") || title == "Minerva" { continue; }
+                if title.is_empty() && class.is_empty() { continue; }
+                let app = Self::guess_app(&class);
+                if !app.is_empty() && !apps.contains(&app) { apps.push(app.clone()); }
+                wins.push(Value::obj(vec![
+                    ("id".into(), Value::s(hex)),
+                    ("title".into(), Value::s(title)),
+                    ("class".into(), Value::s(class)),
+                    ("app".into(), Value::s(app)),
+                    ("focused".into(), Value::Bool(hex == active)),
+                ]));
+            }
+        }
         let mut l = self.launched.lock().unwrap();
         l.retain(|(_, p)| pid_alive(*p));
-        Value::obj(vec![("apps".into(), Value::arr(
-            l.iter().map(|(id, p)| Value::obj(vec![
-                ("id".into(), Value::s(id.clone())),
-                ("pid".into(), Value::n(*p as f64)),
-            ])).collect()))])
+        for (id, _) in l.iter() {
+            if !apps.contains(id) { apps.push(id.clone()); }
+        }
+        Value::obj(vec![
+            ("apps".into(), Value::arr(apps.into_iter()
+                .map(|id| Value::obj(vec![("id".into(), Value::s(id)), ("pid".into(), Value::n(0.0))]))
+                .collect())),
+            ("windows".into(), Value::arr(wins)),
+        ])
+    }
+
+    fn xprop_hex(out: &str) -> String {
+        out.split('#').nth(1).map(|t| t.chars().take_while(|c| c.is_ascii_hexdigit()).collect::<String>()).unwrap_or_default()
+    }
+    fn xprop_quoted(out: &str, key: &str) -> Vec<String> {
+        for line in out.lines() {
+            if line.starts_with(key) {
+                let mut items = Vec::new();
+                let mut rest = line;
+                while let Some(a) = rest.find('"') {
+                    let tail = &rest[a + 1..];
+                    match tail.find('"') {
+                        Some(b) => { items.push(tail[..b].to_string()); rest = &tail[b + 1..]; }
+                        None => break,
+                    }
+                }
+                return items;
+            }
+        }
+        Vec::new()
+    }
+    fn xprop_first(out: &str, key: &str) -> String {
+        Self::xprop_quoted(out, key).into_iter().next().unwrap_or_default()
+    }
+    fn xprop_second(out: &str, key: &str) -> String {
+        let q = Self::xprop_quoted(out, key);
+        if q.len() > 1 { q[1].clone() } else { q.first().cloned().unwrap_or_default() }
+    }
+    fn guess_app(class: &str) -> String {
+        let c = class.to_lowercase();
+        let table: &[(&str, &[&str])] = &[
+            ("terminal", &["terminal", "xterm", "urxvt", "alacritty", "kitty", "konsole", "tilix", "pty"]),
+            ("files", &["pcmanfm", "thunar", "nautilus", "dolphin", "nemo", "caja", "filemanager", "file-manager"]),
+            ("web", &["chromium", "chrome", "firefox", "epiphany", "browser"]),
+            ("editor", &["mousepad", "gedit", "pluma", "geany", "kate", "xed"]),
+            ("images", &["viewnior", "feh", "eog", "gthumb", "sxiv", "nomacs"]),
+            ("pdf", &["atril", "evince", "okular", "zathura"]),
+            ("calc", &["galculator", "calculator", "gnome-calculator", "speedcrunch"]),
+            ("archive", &["xarchiver", "file-roller", "fileroller", "engrampa", "ark"]),
+        ];
+        for (id, needles) in table {
+            for n in *needles {
+                if c.contains(n) { return (*id).to_string(); }
+            }
+        }
+        String::new()
+    }
+
+    /// Focus / close / minimize a real X window by EWMH id (wmctrl).
+    pub fn window_op(&self, op: &str, id: &str) -> Value {
+        if self.session_mode != "x11" { return fail_json("not in x11 session mode"); }
+        if !id.chars().all(|c| c.is_ascii_hexdigit()) || id.is_empty() { return fail_json("bad window id"); }
+        let wid = format!("0x{}", id);
+        let cmd = match op {
+            "focus" => format!("wmctrl -i -b remove,hidden -r {0} 2>/dev/null; wmctrl -i -a {0} 2>/dev/null", wid),
+            "close" => format!("wmctrl -i -c {} 2>/dev/null", wid),
+            "minimize" => format!("wmctrl -i -b add,hidden -r {} 2>/dev/null", wid),
+            "restore" => format!("wmctrl -i -b remove,hidden -r {} 2>/dev/null", wid),
+            _ => return fail_json("bad win op"),
+        };
+        run_out(&cmd);
+        ok_json(vec![("op".into(), Value::s(op.to_string())), ("id".into(), Value::s(id.to_string()))])
+    }
+
+    /// Queue a shell event (consumed by the shell surface via /api/v1/events).
+    pub fn push_event(&self, name: &str) -> Value {
+        self.events.lock().unwrap().push(name.to_string());
+        ok_json(vec![("event".into(), Value::s(name.to_string()))])
+    }
+
+    pub fn take_events(&self) -> Value {
+        let mut e = self.events.lock().unwrap();
+        let arr = Value::arr(e.iter().map(|s| Value::s(s.clone())).collect());
+        e.clear();
+        Value::obj(vec![("events".into(), arr)])
     }
 
     pub fn push_pending(&self, id: &str) -> Value {

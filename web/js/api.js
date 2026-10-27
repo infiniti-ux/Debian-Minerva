@@ -236,8 +236,12 @@
     try { var j = await raw('/api/v1/desktop-apps'); return j.apps || []; } catch (e) { return []; }
   }
   async function running() {
+    if (backend !== 'rust') return { apps: [], windows: [] };
+    try { var j = await raw('/api/v1/running'); return j || { apps: [], windows: [] }; } catch (e) { return { apps: [], windows: [] }; }
+  }
+  async function events() {
     if (backend !== 'rust') return [];
-    try { var j = await raw('/api/v1/running'); return j.apps || []; } catch (e) { return []; }
+    try { var j = await raw('/api/v1/events'); return j.events || []; } catch (e) { return []; }
   }
   function iconUrl(name) {
     return '/api/v1/icon?name=' + encodeURIComponent(name || '') +
@@ -307,7 +311,7 @@
     action: action, terminal: terminal, files: files, fileOp: fileOp,
     execApp: execApp, execDesktop: execDesktop, execFallback: execFallback,
     takePending: takePending, openPanel: openPanel, closePanels: closePanels,
-    cmd: cmd, sys: sys, desktopApps: desktopApps, running: running, iconUrl: iconUrl,
+    cmd: cmd, sys: sys, desktopApps: desktopApps, running: running, events: events, iconUrl: iconUrl,
     HELP: HELP, systemFallback: systemFallback
   };
 })(window);

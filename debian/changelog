@@ -1,3 +1,29 @@
+debian-minerva (0.4.0) unstable; urgency=medium
+
+  * Session v3 "single surface": the whole Minerva desktop (wallpaper, top
+    bar, taskbar dock, launcher, popovers, notifications, settings) is drawn
+    by ONE fullscreen shell surface (chromium --kiosk), while real
+    applications run as ordinary X clients managed by Openbox. This removes
+    the entire class of window-placement failures: a kiosk window is
+    fullscreen by itself on any stack, and app windows get standard
+    window-manager placement.
+  * Dock taskbar now mirrors the window manager: EWMH _NET_CLIENT_LIST via
+    xprop lists every real window; click focuses/raises, right-click closes
+    (wmctrl). Super key opens the in-surface launcher through a new shell
+    event queue (openbox keybind -> daemon -> shell).
+  * Popovers, notifications and settings render in-surface (no more separate
+    panel windows that had to be placed).
+  * Standard desktop autostart: dunst (notifications), parcellite
+    (clipboard), polkit authentication agent; bundled slim dark Openbox
+    theme "Minerva" for app window chrome.
+  * New default app set wired into Depends/Recommends and the launcher:
+    xterm/xfce4-terminal, pcmanfm, mousepad, viewnior, xarchiver, galculator,
+    atril, scrot.
+  * docs/PRODUCT.md: full product roadmap (compositor/shell/session/services
+    phases) with per-phase status and the v1.0 Wayland compositor milestone.
+
+ -- Debian Minerva contributors <minerva@example.org>  Tue, 27 Oct 2026 22:30:00 +0700
+
 debian-minerva (0.3.2) unstable; urgency=medium
 
   * Shell windows (desktop/topbar/dock) now use a fresh chromium profile per

@@ -9,8 +9,9 @@ Homepage: https://github.com/infiniti-ux/Debian-Minerva
 
 Package: debian-minerva
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}, openbox, curl
-Recommends: chromium, network-manager, x11-xserver-utils
+Depends: ${shlibs:Depends}, ${misc:Depends}, openbox, curl, x11-utils, wmctrl, xterm
+Recommends: chromium, network-manager, x11-xserver-utils, dunst, parcellite, scrot,
+ pcmanfm, mousepad, viewnior, xarchiver, galculator, atril, xfce4-terminal
 Suggests: cage, weston
 Description: Debian Minerva desktop environment (Rust core, real X11 session)
  Minerva is a real desktop environment for Debian. A dependency-free Rust
@@ -20,11 +21,12 @@ Description: Debian Minerva desktop environment (Rust core, real X11 session)
  Wi-Fi (nmcli), resolution (xrandr), brightness, night light and power.
  .
  Installing this package adds a "Minerva" entry to the display manager
- (GDM, LightDM, SDDM). The session runs Openbox as window manager with the
- Minerva shell as native X surfaces: desktop layer, always-on-top status
- bar, full-width taskbar dock, and on-demand launcher / Wi-Fi / audio /
- battery / notification / settings windows. Real app windows are managed by
- Openbox (Alt+Tab, snapping, virtual desktops are native).
+ (GDM, LightDM, SDDM). The session runs Openbox as window manager plus ONE
+ fullscreen Minerva shell surface (wallpaper, top bar, taskbar dock,
+ launcher, popovers, notifications, settings) while real applications run
+ as ordinary X clients on top — listed, focused and closed from the dock
+ through the EWMH client list. Background services (notification daemon,
+ clipboard, polkit agent) autostart like on any standard desktop.
  .
  Also includes: light/dark theming with 6 accents and 5 wallpapers, a
  Rust-backed terminal, notification shade and real apt package search and
