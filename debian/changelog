@@ -1,3 +1,21 @@
+debian-minerva (0.5.3) unstable; urgency=medium
+
+  * UI/UX polish pass against the Aluminium OS reference screenshots:
+    rounder floating surfaces (24 px) with layered soft shadows and a light
+    theme variant; quick-settings tiles become horizontal pill cards in a
+    two-column grid with solid-accent active state; material-style slider
+    knobs (white with accent halo); dock hover lift + glow and active ring;
+    tabular-numerals clock; pulsing notification dot; wallpaper depth
+    vignette (theme-aware); launcher card hover lift; toast accent edge;
+    :focus-visible rings and accent ::selection for accessibility.
+  * Status bar scrim now flips light on light wallpapers (readability fix).
+  * Launcher: arrow-key navigation through results (Up/Down wraps, Enter
+    launches the focused card).
+  * Panel open animation uses the spring easing with per-surface transform
+    origin (popovers from top-right, launcher from bottom-center).
+
+ -- Debian Minerva contributors <minerva@example.org>  Wed, 28 Oct 2026 09:10:00 +0700
+
 debian-minerva (0.5.2) unstable; urgency=medium
 
   * Session bootstrap now follows the proven Debian/X11 session conventions,

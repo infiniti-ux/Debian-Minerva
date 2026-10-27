@@ -904,6 +904,18 @@
     });
 
     // launcher
+    // arrow-key navigation through launcher results, like a real app grid
+    function launcherNav(e) {
+      if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
+      var items = $$('#launcher-grid .launcher-app');
+      if (!items.length) return;
+      e.preventDefault();
+      var i = items.indexOf(document.activeElement);
+      var n = e.key === 'ArrowDown' ? (i + 1) % items.length : (i <= 0 ? items.length - 1 : i - 1);
+      items[n].focus();
+    }
+    $('#launcher-input').addEventListener('keydown', launcherNav);
+    $('#launcher-grid').addEventListener('keydown', launcherNav);
     $('#launcher-input').addEventListener('input', renderLauncher);
     $('#launcher-input').addEventListener('keydown', function (e) {
       if (e.key === 'Enter') {
