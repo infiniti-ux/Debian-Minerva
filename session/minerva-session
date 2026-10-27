@@ -127,6 +127,12 @@ elif command -v xdpyinfo >/dev/null 2>&1; then
   esac
 fi
 log "screen ${SCREEN_W}x${SCREEN_H}"
+TB_H=40
+DOCK_H=56
+DOCK_Y=$((SCREEN_H - DOCK_H)); [ "$DOCK_Y" -lt 0 ] && DOCK_Y=0
+POP_Y=$((TB_H + 8))
+LAUNCH_H=600
+LAUNCH_Y=$((DOCK_Y - LAUNCH_H - 14)); [ "$LAUNCH_Y" -lt "$POP_Y" ] && LAUNCH_Y="$POP_Y"
 
 # --- openbox configuration (generated with real geometry) --------------------
 write_openbox_config() {
@@ -136,14 +142,6 @@ write_openbox_config() {
   if [ -f "$OB_DIR/rc.xml" ] && ! grep -q "minerva-generated" "$OB_DIR/rc.xml" 2>/dev/null; then
     cp "$OB_DIR/rc.xml" "$OB_DIR/rc.xml.pre-minerva" 2>/dev/null
   fi
-  TB_H=40
-  DOCK_H=56
-  DOCK_Y=$((SCREEN_H - DOCK_H))
-  [ "$DOCK_Y" -lt 0 ] && DOCK_Y=0
-  POP_Y=$((TB_H + 8))
-  LAUNCH_H=600
-  LAUNCH_Y=$((DOCK_Y - LAUNCH_H - 14))
-  [ "$LAUNCH_Y" -lt "$POP_Y" ] && LAUNCH_Y="$POP_Y"
   cat >"$OB_DIR/rc.xml" <<RCEOF
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- minerva-generated: rewritten at every login by /usr/bin/minerva-session -->
@@ -187,61 +185,61 @@ write_openbox_config() {
     </context>
   </mouse>
   <applications>
-    <application class="minerva-desktop">
+    <application name="minerva-desktop" class="minerva-desktop">
       <decor>no</decor><layer>below</layer><fullscreen>yes</fullscreen>
       <skip_taskbar>yes</skip_taskbar><skip_pager>yes</skip_pager>
       <position force="yes"><x>0</x><y>0</y></position>
       <size><width>${SCREEN_W}</width><height>${SCREEN_H}</height></size>
     </application>
-    <application class="minerva-topbar">
+    <application name="minerva-topbar" class="minerva-topbar">
       <decor>no</decor><layer>dock</layer>
       <skip_taskbar>yes</skip_taskbar><skip_pager>yes</skip_pager>
       <position force="yes"><x>0</x><y>0</y></position>
       <size><width>${SCREEN_W}</width><height>${TB_H}</height></size>
     </application>
-    <application class="minerva-dock">
+    <application name="minerva-dock" class="minerva-dock">
       <decor>no</decor><layer>dock</layer>
       <skip_taskbar>yes</skip_taskbar><skip_pager>yes</skip_pager>
       <position force="yes"><x>0</x><y>${DOCK_Y}</y></position>
       <size><width>${SCREEN_W}</width><height>${DOCK_H}</height></size>
     </application>
-    <application class="minerva-launcher">
+    <application name="minerva-launcher" class="minerva-launcher">
       <decor>no</decor><layer>dock</layer>
       <skip_taskbar>yes</skip_taskbar><skip_pager>yes</skip_pager>
       <position force="yes"><x center="yes">0</x><y>${LAUNCH_Y}</y></position>
       <size><width>880</width><height>${LAUNCH_H}</height></size>
     </application>
-    <application class="minerva-wifi">
+    <application name="minerva-wifi" class="minerva-wifi">
       <decor>no</decor><layer>dock</layer><skip_taskbar>yes</skip_taskbar><skip_pager>yes</skip_pager>
       <position force="yes"><x>-8</x><y>${POP_Y}</y></position>
       <size><width>372</width><height>470</height></size>
     </application>
-    <application class="minerva-audio">
+    <application name="minerva-audio" class="minerva-audio">
       <decor>no</decor><layer>dock</layer><skip_taskbar>yes</skip_taskbar><skip_pager>yes</skip_pager>
       <position force="yes"><x>-8</x><y>${POP_Y}</y></position>
       <size><width>372</width><height>240</height></size>
     </application>
-    <application class="minerva-battery">
+    <application name="minerva-battery" class="minerva-battery">
       <decor>no</decor><layer>dock</layer><skip_taskbar>yes</skip_taskbar><skip_pager>yes</skip_pager>
       <position force="yes"><x>-8</x><y>${POP_Y}</y></position>
       <size><width>372</width><height>320</height></size>
     </application>
-    <application class="minerva-calendar">
+    <application name="minerva-calendar" class="minerva-calendar">
       <decor>no</decor><layer>dock</layer><skip_taskbar>yes</skip_taskbar><skip_pager>yes</skip_pager>
       <position force="yes"><x>-8</x><y>${POP_Y}</y></position>
       <size><width>372</width><height>430</height></size>
     </application>
-    <application class="minerva-power">
+    <application name="minerva-power" class="minerva-power">
       <decor>no</decor><layer>dock</layer><skip_taskbar>yes</skip_taskbar><skip_pager>yes</skip_pager>
       <position force="yes"><x>-8</x><y>${POP_Y}</y></position>
       <size><width>260</width><height>240</height></size>
     </application>
-    <application class="minerva-shade">
+    <application name="minerva-shade" class="minerva-shade">
       <decor>no</decor><layer>dock</layer><skip_taskbar>yes</skip_taskbar><skip_pager>yes</skip_pager>
       <position force="yes"><x>-8</x><y>${POP_Y}</y></position>
       <size><width>420</width><height>560</height></size>
     </application>
-    <application class="minerva-settings">
+    <application name="minerva-settings" class="minerva-settings">
       <decor>no</decor><layer>above</layer><skip_taskbar>no</skip_taskbar><skip_pager>yes</skip_pager>
       <position force="yes"><x center="yes">0</x><y center="yes">0</y></position>
       <size><width>980</width><height>680</height></size>
@@ -298,7 +296,16 @@ done
 CHROME_FLAGS="--no-first-run --no-default-browser-check --disable-session-crashed-bubble --disable-dev-shm-usage --password-store=basic --disable-translate --check-for-update-interval=31536000"
 
 app_window() { # role profile
-  "$BROWSER" --app="$URL#$1" --class="minerva-$1" \
+  # chromium only honours --wm-class (not --class); the explicit geometry is a
+  # belt-and-braces fallback for the Openbox application rules below.
+  case "$1" in
+    desktop) geo="--start-fullscreen" ;;
+    topbar)  geo="--window-size=${SCREEN_W},${TB_H} --window-position=0,0" ;;
+    dock)    geo="--window-size=${SCREEN_W},${DOCK_H} --window-position=0,${DOCK_Y}" ;;
+    *)       geo="" ;;
+  esac
+  # shellcheck disable=SC2086
+  "$BROWSER" --app="$URL#$1" --wm-class="minerva-$1" --class="minerva-$1" $geo \
     --user-data-dir="$RT/$2" $CHROME_FLAGS >>"$LOG" 2>&1
 }
 

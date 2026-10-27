@@ -271,7 +271,7 @@ fn api(req: &Request, srv: &Server) -> Response {
             if given.as_deref() != Some(expected.as_str()) {
                 return Response::json(401, Value::obj(vec![
                     ("ok", Value::Bool(false)),
-                    ("error", Value::s("missing or invalid session token".into())),
+                    ("error", Value::s("missing or invalid session token")),
                 ]));
             }
         }

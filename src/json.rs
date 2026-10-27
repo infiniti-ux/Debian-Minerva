@@ -82,18 +82,6 @@ impl Value {
     pub fn is_null(&self) -> bool {
         matches!(self, Value::Null)
     }
-    pub fn with(&self, key: &str, value: Value) -> Value {
-        let mut items = match self {
-            Value::Obj(o) => o.clone(),
-            _ => Vec::new(),
-        };
-        if let Some(slot) = items.iter_mut().find(|(k, _)| k == key) {
-            slot.1 = value;
-        } else {
-            items.push((key.to_string(), value));
-        }
-        Value::Obj(items)
-    }
 }
 
 pub fn stringify(v: &Value) -> String {
