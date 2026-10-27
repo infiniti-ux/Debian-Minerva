@@ -51,7 +51,7 @@ if [ -n "${DISPLAY:-}" ]; then ok "DISPLAY=$DISPLAY"; else bad "DISPLAY unset"; 
 echo "[shell surface]"
 shell_found=no
 if command -v xprop >/dev/null 2>&1 && xprop -root _NET_CLIENT_LIST 2>/dev/null | grep -q '#'; then
-  for id in $(xprop -root _NET_CLIENT_LIST 2>/dev/null | tr ',' '\n' | sed -n 's/.*#\([0-9a-fA-F]*\).*/\1/p'); do
+  for id in $(xprop -root _NET_CLIENT_LIST 2>/dev/null | tr ',' '\n' | sed -n 's/.*#x\?\([0-9a-fA-F]*\).*/\1/p'); do
     if xprop -id "0x$id" _NET_WM_NAME 2>/dev/null | grep -q '"Minerva"'; then shell_found=yes; break; fi
   done
   [ "$shell_found" = yes ] && ok "fullscreen shell surface window found" || bad "shell surface window NOT in client list"

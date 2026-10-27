@@ -565,7 +565,7 @@
              ['Terminal', 'Try `neofetch`, `apps`, `open settings`, `theme light`.'],
              ['Customise', 'Change wallpaper, accent and theme in Settings → Appearance.'],
              ['Files', 'Your home directory is served by the Rust session daemon.'],
-             ['About', 'Debian Minerva 0.5.0 — MIT licensed, no Google components.']].map(function (c) {
+             ['About', 'Debian Minerva 0.5.1 — MIT licensed, no Google components.']].map(function (c) {
               return '<div class="browser-card"><h3>' + c[0] + '</h3><p>' + c[1] + '</p></div>';
             }).join('') + '</div>';
           url.value = 'minerva://start';

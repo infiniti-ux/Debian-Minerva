@@ -38,6 +38,7 @@ SHELL_PID=""
 WM_PID=""
 AUTOSTART_PIDS=""
 ENFORCE_PID=""
+EXITING=no
 PIDFILE="$STATE/sessiond.pid"
 SHELL_PROFILE="$RT/shell-$$"
 
@@ -67,6 +68,7 @@ stop_daemon() {
 }
 
 cleanup() {
+  EXITING=yes
   log "session ending"
   [ -n "$WATCH_PID" ] && kill "$WATCH_PID" 2>/dev/null
   [ -n "$SHELL_PID" ] && kill "$SHELL_PID" 2>/dev/null
@@ -272,7 +274,7 @@ enforce_shell_surface() {
   command -v xprop >/dev/null 2>&1 || { log "enforcer: xprop missing, skipped"; return 0; }
   sleep 2
   while :; do
-    for id in $(xprop -root _NET_CLIENT_LIST 2>/dev/null | tr ',' '\n' | sed -n 's/.*#\([0-9a-fA-F]*\).*/\1/p'); do
+    for id in $(xprop -root _NET_CLIENT_LIST 2>/dev/null | tr ',' '\n' | sed -n 's/.*#x\?\([0-9a-fA-F]*\).*/\1/p'); do
       t="$(xprop -id 0x$id _NET_WM_NAME 2>/dev/null | sed -n 's/.*"\(.*\)".*/\1/p' | head -1)"
       if [ "$t" = "Minerva" ]; then
         wmctrl -i -r 0x$id -b add,below,skip_taskbar,skip_pager 2>/dev/null
@@ -372,7 +374,22 @@ else
   esac
 fi
 
-wait "$SHELL_PID"
-EXIT_CODE=$?
-log "shell exited code=$EXIT_CODE"
+# A crashed shell surface must not throw the user back to the login screen:
+# respawn it a few times. Logout paths set EXITING via the cleanup trap.
+shell_tries=0
+EXIT_CODE=0
+while :; do
+  wait "$SHELL_PID"
+  EXIT_CODE=$?
+  [ "$EXITING" = yes ] && break
+  shell_tries=$((shell_tries + 1))
+  if [ "$shell_tries" -ge 4 ]; then
+    log "shell surface failed $shell_tries times — giving up"
+    break
+  fi
+  log "shell surface exited code=$EXIT_CODE — respawning (try $shell_tries)"
+  sleep 1
+  shell_window
+done
+log "session exit code=$EXIT_CODE"
 exit "$EXIT_CODE"
