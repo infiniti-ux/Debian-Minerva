@@ -1,3 +1,14 @@
+debian-minerva (0.3.2) unstable; urgency=medium
+
+  * Shell windows (desktop/topbar/dock) now use a fresh chromium profile per
+    login so window bounds saved by an earlier broken session can never be
+    restored over the placement flags and Openbox rules.
+  * Session checks that openbox is still alive right after start, retries
+    once, and logs the outcome plus the per-window geometry it requested,
+    so placement problems are diagnosable from session.log.
+
+ -- Debian Minerva contributors <minerva@example.org>  Tue, 27 Oct 2026 21:40:00 +0700
+
 debian-minerva (0.3.1) unstable; urgency=medium
 
   * Window placement fix: chromium honours --wm-class, not --class, so the
