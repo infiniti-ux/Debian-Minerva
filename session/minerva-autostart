@@ -1,0 +1,63 @@
+#!/bin/sh
+# minerva-autostart — run by Openbox through its stock --startup hook, i.e.
+# exactly where a plain openbox session runs its autostart (adapted from
+# openbox-session.in / autostart.in of the Openbox project and the XDG
+# autostart chain Debian ships with openbox).
+#
+# Order: Minerva background services first, then the stock Openbox autostart
+# chain (system script, user script, XDG autostart spec entries), with dex
+# as a fallback XDG runner when the openbox chain is unavailable.
+set -u
+
+STATE="${XDG_STATE_HOME:-$HOME/.local/state}/minerva"
+mkdir -p "$STATE" 2>/dev/null || STATE="/tmp/minerva-$USER"
+LOG="$STATE/session.log"
+log() { echo "[minerva-autostart] $*" >>"$LOG"; }
+
+# 1. Minerva background services -------------------------------------------
+for svc in dunst parcellite; do
+  if command -v "$svc" >/dev/null 2>&1; then
+    "$svc" >>"$LOG" 2>&1 &
+    log "autostart: $svc pid=$!"
+  else
+    log "autostart: $svc not installed (skipped)"
+  fi
+done
+for agent in \
+  /usr/lib/policykit-1-gnome/polkit-gnome-authentication-agent-1 \
+  /usr/libexec/polkit-gnome-authentication-agent-1 \
+  /usr/lib/polkit-gnome/polkit-gnome-authentication-agent-1; do
+  if [ -x "$agent" ]; then
+    "$agent" >>"$LOG" 2>&1 &
+    log "autostart: polkit agent ($agent)"
+    break
+  fi
+done
+
+# 2. Stock Openbox autostart chain (system + user + XDG autostart spec) -----
+OB_CHAIN=no
+for ob in \
+  /usr/lib/x86_64-linux-gnu/openbox-autostart \
+  /usr/lib/aarch64-linux-gnu/openbox-autostart \
+  /usr/lib/openbox-autostart \
+  /usr/libexec/openbox-autostart; do
+  if [ -x "$ob" ]; then
+    "$ob" OPENBOX >>"$LOG" 2>&1
+    OB_CHAIN=yes
+    log "autostart: openbox-autostart chain finished"
+    break
+  fi
+done
+
+# 3. Fallback XDG autostart runner when the stock chain is unavailable ------
+if [ "$OB_CHAIN" = no ]; then
+  if command -v openbox-xdg-autostart >/dev/null 2>&1; then
+    openbox-xdg-autostart >>"$LOG" 2>&1 && log "autostart: openbox-xdg-autostart finished"
+  elif command -v dex >/dev/null 2>&1; then
+    dex --autostart >>"$LOG" 2>&1 && log "autostart: dex finished"
+  else
+    log "autostart: no XDG autostart runner installed (skipped)"
+  fi
+fi
+
+exit 0

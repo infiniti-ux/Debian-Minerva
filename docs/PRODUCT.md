@@ -55,8 +55,13 @@ below, not abandoned.
 * Shell/panel: one fullscreen surface (`chromium --kiosk`) rendering
   wallpaper, top bar, taskbar dock, launcher, popovers, notification shade,
   settings — the Aluminium-OS replica UI.
-* Session manager: `/usr/bin/minerva-session` (daemon watchdog, WM start,
-  service autostart, cleanup) + `.desktop` session entry for GDM/LightDM/SDDM.
+* Session manager: `/usr/bin/minerva-session` (daemon watchdog, WM start +
+  watchdog, cleanup) + `/usr/bin/minerva-autostart` on the stock Openbox
+  `--startup` hook + `.desktop` session entry for GDM/LightDM/SDDM. The
+  bootstrap follows proven Debian session conventions adapted from the
+  Openbox project (openbox-session/autostart) and startxfce4: dbus-launch
+  guard, environment files, xrdb, EWMH root cleanup, XDG_CURRENT_DESKTOP,
+  XDG autostart chain (openbox-autostart / openbox-xdg-autostart / dex).
 * Settings daemon: Rust `minerva-sessiond` — volume (pactl/amixer), Wi-Fi
   (nmcli), resolution/brightness/night-light (xrandr), theme/wallpaper/
   scale state, apt search/install, power (logind).
