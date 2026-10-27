@@ -220,7 +220,7 @@ impl Exec {
             let active = Self::xprop_hex(&run_out("xprop -root _NET_ACTIVE_WINDOW 2>/dev/null"));
             let clients = run_out("xprop -root _NET_CLIENT_LIST 2>/dev/null");
             for hex in clients.split('#').skip(1)
-                .map(|t| t.chars().take_while(|c| c.is_ascii_hexdigit()).collect::<String>())
+                .map(Self::hex_token)
                 .filter(|h| !h.is_empty())
             {
                 let out = run_out(&format!("xprop -id 0x{} _NET_WM_NAME WM_CLASS _NET_WM_DESKTOP 2>/dev/null", hex));
@@ -259,7 +259,13 @@ impl Exec {
     }
 
     fn xprop_hex(out: &str) -> String {
-        out.split('#').nth(1).map(|t| t.chars().take_while(|c| c.is_ascii_hexdigit()).collect::<String>()).unwrap_or_default()
+        out.split('#').skip(1).map(Self::hex_token).next().unwrap_or_default()
+    }
+    /// xprop renders ids as "#x4600007"; accept both "x4600007" and "4600007".
+    fn hex_token(t: &str) -> String {
+        let t = t.trim();
+        let t = t.strip_prefix('x').unwrap_or(t);
+        t.chars().take_while(|c| c.is_ascii_hexdigit()).collect()
     }
     fn xprop_quoted(out: &str, key: &str) -> Vec<String> {
         for line in out.lines() {
@@ -756,6 +762,11 @@ fn desktop_app_exec(id: &str) -> Option<String> {
 fn find_icon(name: &str) -> Option<(&'static str, Vec<u8>)> {
     if name.is_empty() { return None; }
     if name.starts_with('/') {
+        // absolute Icon= paths from .desktop files are legitimate, but the
+        // API must not become an arbitrary file read: system roots only.
+        if name.contains("..") { return None; }
+        let allowed = ["/usr/share/", "/usr/lib/", "/opt/"];
+        if !allowed.iter().any(|r| name.starts_with(r)) { return None; }
         let data = std::fs::read(name).ok()?;
         return Some((mime_for(name), data));
     }
@@ -778,6 +789,50 @@ fn find_icon(name: &str) -> Option<(&'static str, Vec<u8>)> {
         if let Ok(data) = std::fs::read(&p) { return Some((mime_for(&p), data)); }
     }
     None
+}
+
+#[cfg(test)]
+mod tests {
+    use super::Exec;
+
+    // Regression: xprop prints window ids as "#x4600007". The parser must
+    // skip the optional 'x' or the whole EWMH taskbar silently empties.
+    #[test]
+    fn hex_token_handles_x_prefix() {
+        assert_eq!(Exec::hex_token("x4600007, window id "), "4600007");
+        assert_eq!(Exec::hex_token("4600007"), "4600007");
+        assert_eq!(Exec::hex_token(""), "");
+        assert_eq!(Exec::hex_token("xzzz"), "");
+    }
+
+    #[test]
+    fn client_list_ids() {
+        let out = "_NET_CLIENT_LIST(WINDOW): window id #x4600007, window id #x4600009\n";
+        let ids: Vec<String> = out.split('#').skip(1)
+            .map(Exec::hex_token)
+            .filter(|h| !h.is_empty())
+            .collect();
+        assert_eq!(ids, vec!["4600007".to_string(), "4600009".to_string()]);
+    }
+
+    #[test]
+    fn xprop_field_parsers() {
+        let out = "_NET_WM_DESKTOP(CARDINAL) = 2\n\
+                   _NET_WM_NAME(UTF8_STRING) = \"Terminal\"\n\
+                   WM_CLASS(STRING) = \"xfce4-terminal\", \"Xfce4-terminal\"\n";
+        assert_eq!(Exec::xprop_num(out, "_NET_WM_DESKTOP"), 2);
+        assert_eq!(Exec::xprop_num(out, "_NET_WM_PID"), -2);
+        assert_eq!(Exec::xprop_first(out, "_NET_WM_NAME"), "Terminal");
+        assert_eq!(Exec::xprop_second(out, "WM_CLASS"), "Xfce4-terminal");
+    }
+
+    #[test]
+    fn guess_app_maps_common_classes() {
+        assert_eq!(Exec::guess_app("Xfce4-terminal"), "terminal");
+        assert_eq!(Exec::guess_app("chromium-browser"), "browser");
+        assert_eq!(Exec::guess_app("Pcmanfm"), "files");
+        assert_eq!(Exec::guess_app("some-unknown-app"), "");
+    }
 }
 
 fn mime_for(p: &str) -> &'static str {

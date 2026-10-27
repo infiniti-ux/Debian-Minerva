@@ -1,3 +1,20 @@
+debian-minerva (0.5.1) unstable; urgency=medium
+
+  * Critical parsing fix: xprop renders EWMH window ids as "#x4600007" but
+    the parser stopped at the leading 'x', so the live taskbar list was
+    always empty, focus detection never matched, and the shell-surface
+    enforcer and minerva-doctor window scans silently matched nothing.
+    All three now parse past the optional 'x' (session enforcer and doctor
+    sed patterns fixed as well).
+  * Session resilience: a crashed shell surface is respawned up to three
+    times instead of ending the session and dropping the user at the
+    login screen; logout/kill paths set an EXITING guard so respawning
+    never fights teardown.
+  * Security: the icon API no longer reads arbitrary absolute paths; only
+    /usr/share, /usr/lib and /opt roots are served (still token-gated).
+
+ -- Debian Minerva contributors <minerva@example.org>  Wed, 28 Oct 2026 07:40:00 +0700
+
 debian-minerva (0.5.0) unstable; urgency=medium
 
   * minerva-doctor: one-command session health report (daemon, WM, shell
