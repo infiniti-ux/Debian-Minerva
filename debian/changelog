@@ -1,3 +1,25 @@
+debian-minerva (0.5.2) unstable; urgency=medium
+
+  * Session bootstrap now follows the proven Debian/X11 session conventions,
+    adapted from the Openbox project (openbox-session.in, autostart.in,
+    github.com/danakj/openbox) and startxfce4 (xfce-mirror/xfce4-session):
+      - private D-Bus session bus via dbus-launch when the display manager
+        did not provide one;
+      - /etc/xdg/openbox/environment + user environment sourcing;
+      - ~/.Xresources merged with xrdb;
+      - stale EWMH root properties removed before the WM starts;
+      - XDG_CURRENT_DESKTOP=Minerva exported and imported into the systemd
+        user session;
+      - root window painted before the shell surface maps;
+      - autostart moved to the stock Openbox --startup hook
+        (/usr/bin/minerva-autostart): Minerva services first, then the
+        distro openbox-autostart chain (system + user + XDG autostart spec),
+        with openbox-xdg-autostart/dex as fallback runners;
+      - openbox watchdog restarts the WM (with its autostart hook) if it dies.
+  * Recommends += dbus-x11, dex.
+
+ -- Debian Minerva contributors <minerva@example.org>  Wed, 28 Oct 2026 08:20:00 +0700
+
 debian-minerva (0.5.1) unstable; urgency=medium
 
   * Critical parsing fix: xprop renders EWMH window ids as "#x4600007" but

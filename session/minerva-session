@@ -36,8 +36,8 @@ DAEMON_PID=""
 WATCH_PID=""
 SHELL_PID=""
 WM_PID=""
-AUTOSTART_PIDS=""
 ENFORCE_PID=""
+WM_WATCH_PID=""
 EXITING=no
 PIDFILE="$STATE/sessiond.pid"
 SHELL_PROFILE="$RT/shell-$$"
@@ -73,8 +73,8 @@ cleanup() {
   [ -n "$WATCH_PID" ] && kill "$WATCH_PID" 2>/dev/null
   [ -n "$SHELL_PID" ] && kill "$SHELL_PID" 2>/dev/null
   [ -n "$WM_PID" ] && kill "$WM_PID" 2>/dev/null
+  [ -n "$WM_WATCH_PID" ] && kill "$WM_WATCH_PID" 2>/dev/null
   [ -n "$ENFORCE_PID" ] && kill "$ENFORCE_PID" 2>/dev/null
-  for p in $AUTOSTART_PIDS; do kill "$p" 2>/dev/null; done
   pkill -f "user-data-dir=$RT/shell-" 2>/dev/null
   pkill -f "user-data-dir=$RT/panels" 2>/dev/null
   stop_daemon
@@ -98,6 +98,29 @@ if [ -z "$BROWSER" ]; then
   echo "Minerva: no browser found. sudo apt install chromium openbox" >&2
   exit 1
 fi
+
+# A session bus is required by the autostarted services (dunst, polkit).
+# Display managers provide one; start a private bus when they don't
+# (same guard every proven X session script carries).
+if [ -z "${DBUS_SESSION_BUS_ADDRESS:-}" ] && command -v dbus-launch >/dev/null 2>&1; then
+  eval "$(dbus-launch --exit-with-session)" 2>/dev/null
+  export DBUS_SESSION_BUS_ADDRESS
+  log "dbus: no session bus inherited - launched a private one"
+fi
+
+# Openbox environment-file convention (system then user), like openbox-session.
+for envf in /etc/xdg/openbox/environment "${XDG_CONFIG_HOME:-$HOME/.config}/openbox/environment"; do
+  # shellcheck disable=SC1090
+  [ -r "$envf" ] && . "$envf"
+done
+
+# X resources, like /etc/X11/Xsession does.
+if command -v xrdb >/dev/null 2>&1 && [ -f "$HOME/.Xresources" ]; then
+  xrdb -merge "$HOME/.Xresources" 2>/dev/null
+fi
+
+export XDG_CURRENT_DESKTOP=Minerva
+systemctl --user import-environment DISPLAY XDG_CURRENT_DESKTOP DBUS_SESSION_BUS_ADDRESS 2>/dev/null || true
 
 MULTIWIN=no
 if [ -n "${DISPLAY:-}" ] && command -v openbox >/dev/null 2>&1; then MULTIWIN=yes; fi
@@ -241,30 +264,6 @@ osd.hilight.bg.color: #a80030
 THEMEEOF
 }
 
-# Standard DE background services (notification daemon, clipboard, polkit).
-autostart_services() {
-  for svc in dunst parcellite; do
-    if command -v "$svc" >/dev/null 2>&1; then
-      "$svc" >>"$LOG" 2>&1 &
-      AUTOSTART_PIDS="$AUTOSTART_PIDS $!"
-      log "autostart: $svc pid=$!"
-    else
-      log "autostart: $svc not installed (skipped)"
-    fi
-  done
-  for agent in \
-    /usr/lib/policykit-1-gnome/polkit-gnome-authentication-agent-1 \
-    /usr/libexec/polkit-gnome-authentication-agent-1 \
-    /usr/lib/polkit-gnome/polkit-gnome-authentication-agent-1; do
-    if [ -x "$agent" ]; then
-      "$agent" >>"$LOG" 2>&1 &
-      AUTOSTART_PIDS="$AUTOSTART_PIDS $!"
-      log "autostart: polkit agent ($agent)"
-      break
-    fi
-  done
-}
-
 # Keeps the fullscreen shell surface pinned no matter what any client does:
 # below every app window, fullscreen, out of taskbar/pager. Re-applied every
 # few seconds via EWMH so a missed WM rule or a chromium quirk can never
@@ -336,19 +335,42 @@ if [ "$MULTIWIN" = yes ]; then
   MINERVA_SESSION_MODE=x11
   export MINERVA_SESSION_MODE MINERVA_BROWSER="$BROWSER" MINERVA_SESSION_PID=$$
   log "session mode: x11 (openbox + fullscreen shell surface + real app windows)"
+  # Clean up stale EWMH root properties left by the display manager or a
+  # previous WM (proven step from openbox-session).
+  xprop -root -remove _NET_NUMBER_OF_DESKTOPS \
+        -remove _NET_DESKTOP_NAMES \
+        -remove _NET_CURRENT_DESKTOP 2>/dev/null
   write_openbox_config
-  openbox --sm-disable >>"$LOG" 2>&1 &
-  WM_PID=$!
+  start_wm() {
+    # --startup is the stock openbox hook: minerva-autostart runs once the
+    # WM is ready, exactly where a plain openbox session runs its autostart.
+    openbox --sm-disable --startup "minerva-autostart" >>"$LOG" 2>&1 &
+    WM_PID=$!
+    echo "$WM_PID" >"$STATE/wm.pid"
+  }
+  start_wm
   sleep 0.5
   if ! kill -0 "$WM_PID" 2>/dev/null; then
     log "FATAL?: openbox exited immediately - retrying once"
-    openbox --sm-disable >>"$LOG" 2>&1 &
-    WM_PID=$!
+    start_wm
     sleep 0.5
     kill -0 "$WM_PID" 2>/dev/null || log "FATAL: openbox not running; app windows unmanaged"
   fi
   log "openbox pid=$WM_PID"
-  autostart_services
+  watch_wm() {
+    while :; do
+      pid="$(cat "$STATE/wm.pid" 2>/dev/null || true)"
+      if [ -n "$pid" ] && ! kill -0 "$pid" 2>/dev/null; then
+        log "openbox died - restarting with autostart hook"
+        start_wm
+      fi
+      sleep 2
+    done
+  }
+  watch_wm &
+  WM_WATCH_PID=$!
+  # paint the root window before the shell surface maps (no flash of grey)
+  xsetroot -solid '#0b1020' 2>/dev/null
   shell_window
   enforce_shell_surface &
   ENFORCE_PID=$!
