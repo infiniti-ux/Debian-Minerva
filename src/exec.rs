@@ -59,15 +59,15 @@ fn first_bin(cands: &[&str]) -> Option<String> {
 }
 
 fn ok_json(extra: Vec<(&str, Value)>) -> Value {
-    let mut v = vec![("ok".into(), Value::Bool(true))];
-    v.extend(extra.into_iter().map(|(k, x)| (k.to_string(), x)));
+    let mut v: Vec<(&str, Value)> = vec![("ok", Value::Bool(true))];
+    v.extend(extra);
     Value::obj(v)
 }
 
 fn fail_json(reason: &str) -> Value {
     Value::obj(vec![
-        ("ok".into(), Value::Bool(false)),
-        ("error".into(), Value::s(reason.to_string())),
+        ("ok", Value::Bool(false)),
+        ("error", Value::s(reason.to_string())),
     ])
 }
 
@@ -649,7 +649,7 @@ fn find_icon(name: &str) -> Option<(&'static str, Vec<u8>)> {
     None
 }
 
-pub fn mime_for(p: &str) -> &'static str {
+fn mime_for(p: &str) -> &'static str {
     if p.ends_with(".svg") { "image/svg+xml" }
     else if p.ends_with(".png") { "image/png" }
     else if p.ends_with(".xpm") { "image/xpm" }
