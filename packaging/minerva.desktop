@@ -1,0 +1,8 @@
+[Desktop Entry]
+Name=Debian Minerva
+Comment=Rust desktop session
+Exec=minerva-sessiond --port 8080 --web-root /usr/share/debian-minerva/web
+TryExec=minerva-sessiond
+Type=Application
+DesktopNames=Minerva
+Keywords=desktop;session;minerva;rust;

@@ -1,0 +1,22 @@
+[package]
+name = "minerva-sessiond"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.63"
+description = "Debian Minerva — Rust session daemon and desktop shell host"
+license = "MIT"
+authors = ["Debian Minerva contributors"]
+repository = "https://github.com/infiniti-ux/Debian-Minerva"
+
+# Deliberately dependency-free: the session daemon builds with nothing but
+# rustc + std, so it can be packaged for Debian without vendoring crates.io.
+[dependencies]
+
+[profile.release]
+opt-level = 2
+lto = true
+strip = true
+
+[[bin]]
+name = "minerva-sessiond"
+path = "src/main.rs"

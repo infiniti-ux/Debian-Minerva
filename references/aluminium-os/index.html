@@ -1,0 +1,326 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Aluminium OS — leaked desktop previews</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:#0f1117; color:#e8ecf5;
+         font:15px/1.55 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; }
+  header { padding:40px 28px 24px; max-width:1400px; margin:auto; }
+  h1 { margin:0 0 8px; font-size:30px; letter-spacing:-.02em; }
+  header p { margin:0; color:#9aa3b8; max-width:820px; }
+  .bar { max-width:1400px; margin:0 auto; padding:0 28px 18px; display:flex; gap:10px; flex-wrap:wrap; }
+  button { background:#1c1f29; color:#c9d1e4; border:1px solid #343948; border-radius:999px;
+            padding:7px 16px; cursor:pointer; font:inherit; font-size:13px; }
+  button:hover { border-color:#7aa2ff; }
+  button.active { background:#3b6fe0; border-color:#3b6fe0; color:#fff; }
+  main { max-width:1400px; margin:0 auto; padding:0 28px 60px;
+          display:grid; grid-template-columns:repeat(auto-fill,minmax(330px,1fr)); gap:18px; }
+  .card { margin:0; background:#1c1f29; border:1px solid #343948; border-radius:14px; overflow:hidden; }
+  .card[hidden] { display:none; }
+  .thumb { display:block; aspect-ratio:16/10; background:#0b0d12; overflow:hidden; }
+  .thumb img { width:100%; height:100%; object-fit:contain; display:block; transition:transform .2s; }
+  .thumb:hover img { transform:scale(1.03); }
+  figcaption { padding:14px 16px 16px; }
+  .num { font-size:11px; color:#7aa2ff; font-weight:700; letter-spacing:.1em; }
+  h2 { font-size:16px; margin:4px 0 6px; }
+  figcaption p { margin:0 0 10px; font-size:13px; color:#9aa3b8; }
+  .meta { display:flex; justify-content:space-between; font-size:12px; color:#707a90; }
+  .meta a { color:#9ab6ff; text-decoration:none; }
+  footer { border-top:1px solid #262b38; padding:26px 28px 60px; max-width:1400px; margin:auto; }
+  footer h3 { font-size:14px; text-transform:uppercase; letter-spacing:.1em; color:#8b93a7; }
+  footer ul { columns:2; padding-left:18px; }
+  footer li { margin-bottom:6px; break-inside:avoid; }
+  footer a { color:#9ab6ff; }
+  #lightbox { position:fixed; inset:0; background:rgba(6,8,13,.94); display:none;
+               align-items:center; justify-content:center; flex-direction:column; z-index:9; }
+  #lightbox.open { display:flex; }
+  #lightbox img { max-width:94vw; max-height:82vh; object-fit:contain; }
+  #lightbox .cap { color:#c9d1e4; font-size:13px; margin-top:12px; text-align:center; padding:0 20px; }
+  #lightbox .hint { color:#6f7a90; font-size:12px; margin-top:4px; }
+  #close { position:absolute; top:18px; right:22px; font-size:30px; color:#fff; cursor:pointer; background:none; border:0; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Aluminium OS — leaked desktop previews</h1>
+  <p>18 screenshot hasil leak: Leak Jan 2026 — ALOS / Android 16 (bug report) dan Leak Mei 2026 — Mystic Leaks / Android 17 (UTM Mac).
+     Klik gambar untuk memperbesar. Semua file ada di folder <code>images/</code>.</p>
+</header>
+<div class="bar">
+  <button class="active" data-filter="all">Semua (18)</button>
+  <button data-filter="jan">Jan 2026 · ALOS / Android 16 (4)</button>
+  <button data-filter="may">Mei 2026 · Mystic Leaks / Android 17 (14)</button>
+</div>
+<main>
+      <figure class="card" data-group="jan">
+        <a class="thumb" href="images/01-bug-report-desktop.jpg" data-index="0">
+          <img loading="lazy" src="images/01-bug-report-desktop.jpg" alt="Desktop ALOS — multi-window">
+        </a>
+        <figcaption>
+          <span class="num">01</span>
+          <h2>Desktop ALOS — multi-window</h2>
+          <p>Status bar di atas (jam, tanggal, Wi‑Fi, baterai, EN, Gemini), taskbar/dock di bawah, 2 jendela Chrome + Play Store.</p>
+          <div class="meta"><span>1920×1080 px</span>
+            <a href="https://www.androidauthority.com/google-aluminium-os-first-look-bug-report-3635801/" target="_blank" rel="noopener">sumber ↗</a></div>
+        </figcaption>
+      </figure>
+      <figure class="card" data-group="jan">
+        <a class="thumb" href="images/02-bug-report-split-screen.jpg" data-index="1">
+          <img loading="lazy" src="images/02-bug-report-split-screen.jpg" alt="Split-screen + chrome://version">
+        </a>
+        <figcaption>
+          <span class="num">02</span>
+          <h2>Split-screen + chrome://version</h2>
+          <p>Bukti build: OS Android 16, build ZL1A.260119.001.A1. Dua jendela Chrome 50:50, tombol window control kanan atas.</p>
+          <div class="meta"><span>1200×800 px</span>
+            <a href="https://pokde.net/system/software/operating-system/aluminum-os-leak" target="_blank" rel="noopener">sumber ↗</a></div>
+        </figcaption>
+      </figure>
+      <figure class="card" data-group="jan">
+        <a class="thumb" href="images/03-bug-report-windowed-apps.jpg" data-index="2">
+          <img loading="lazy" src="images/03-bug-report-windowed-apps.jpg" alt="Aplikasi berjendela + taskbar">
+        </a>
+        <figcaption>
+          <span class="num">03</span>
+          <h2>Aplikasi berjendela + taskbar</h2>
+          <p>Jendela freeform bisa di-resize, tombol minimize/maximize/close ala desktop, dock ikon aplikasi.</p>
+          <div class="meta"><span>1000×667 px</span>
+            <a href="https://techbuzz.ai/articles/google-accidentally-leaks-aluminium-os-in-action" target="_blank" rel="noopener">sumber ↗</a></div>
+        </figcaption>
+      </figure>
+      <figure class="card" data-group="jan">
+        <a class="thumb" href="images/04-bug-report-play-store.jpg" data-index="3">
+          <img loading="lazy" src="images/04-bug-report-play-store.jpg" alt="Play Store versi desktop">
+        </a>
+        <figcaption>
+          <span class="num">04</span>
+          <h2>Play Store versi desktop</h2>
+          <p>Google Play Store dengan tab, search, dan tombol Update/Uninstall di dalam jendela.</p>
+          <div class="meta"><span>1920×1080 px</span>
+            <a href="https://www.androidauthority.com/google-aluminium-os-first-look-bug-report-3635801/" target="_blank" rel="noopener">sumber ↗</a></div>
+        </figcaption>
+      </figure>
+      <figure class="card" data-group="may">
+        <a class="thumb" href="images/05-home-screen-app-drawer.jpg" data-index="4">
+          <img loading="lazy" src="images/05-home-screen-app-drawer.jpg" alt="Home screen + app drawer">
+        </a>
+        <figcaption>
+          <span class="num">05</span>
+          <h2>Home screen + app drawer</h2>
+          <p>Wallpaper biru, search bar Google, ikon Play Store &amp; folder Google, dock bawah, app drawer tengah dengan grid aplikasi (termasuk Link to iOS).</p>
+          <div class="meta"><span>1600×900 px</span>
+            <a href="https://gadgets.beebom.com/news/googles-aluminium-os-just-leaked-in-detail-ahead-of-google-io-2026" target="_blank" rel="noopener">sumber ↗</a></div>
+        </figcaption>
+      </figure>
+      <figure class="card" data-group="may">
+        <a class="thumb" href="images/06-home-screen-context-menu.jpg" data-index="5">
+          <img loading="lazy" src="images/06-home-screen-context-menu.jpg" alt="Klik kanan di desktop">
+        </a>
+        <figcaption>
+          <span class="num">06</span>
+          <h2>Klik kanan di desktop</h2>
+          <p>Menu konteks: Wallpaper &amp; style, Widgets, Apps list, Home settings, New folder. Widget tanggal + cuaca di kiri atas.</p>
+          <div class="meta"><span>1500×843 px</span>
+            <a href="https://www.xda-developers.com/google-may-finally-have-the-right-laptop-os-but-it-picked-the-messiest-possible-path-to-get-there/" target="_blank" rel="noopener">sumber ↗</a></div>
+        </figcaption>
+      </figure>
+      <figure class="card" data-group="may">
+        <a class="thumb" href="images/07-home-screen-dark.jpg" data-index="6">
+          <img loading="lazy" src="images/07-home-screen-dark.jpg" alt="Home screen wallpaper gelap">
+        </a>
+        <figcaption>
+          <span class="num">07</span>
+          <h2>Home screen wallpaper gelap</h2>
+          <p>Varian wallpaper gelap; search bar, shortcut Play Store &amp; Google, status bar kanan, dock bawah.</p>
+          <div class="meta"><span>1120×728 px</span>
+            <a href="https://9to5google.com/2026/05/12/android-desktop-os-leak/" target="_blank" rel="noopener">sumber ↗</a></div>
+        </figcaption>
+      </figure>
+      <figure class="card" data-group="may">
+        <a class="thumb" href="images/08-quick-settings.jpg" data-index="7">
+          <img loading="lazy" src="images/08-quick-settings.jpg" alt="Quick Settings compact">
+        </a>
+        <figcaption>
+          <span class="num">08</span>
+          <h2>Quick Settings compact</h2>
+          <p>Panel turun dari kanan atas: slider brightness, Wi‑Fi, Bluetooth, Modes, Quick Share, dll.</p>
+          <div class="meta"><span>1254×1300 px</span>
+            <a href="https://gadgets.beebom.com/news/googles-aluminium-os-just-leaked-in-detail-ahead-of-google-io-2026" target="_blank" rel="noopener">sumber ↗</a></div>
+        </figcaption>
+      </figure>
+      <figure class="card" data-group="may">
+        <a class="thumb" href="images/09-notification-shade.jpg" data-index="8">
+          <img loading="lazy" src="images/09-notification-shade.jpg" alt="Notification panel">
+        </a>
+        <figcaption>
+          <span class="num">09</span>
+          <h2>Notification panel</h2>
+          <p>Notifikasi Device Setup, USB debugging, Charging this device; bagian Silent terpisah.</p>
+          <div class="meta"><span>1254×1300 px</span>
+            <a href="https://gadgets.beebom.com/news/googles-aluminium-os-just-leaked-in-detail-ahead-of-google-io-2026" target="_blank" rel="noopener">sumber ↗</a></div>
+        </figcaption>
+      </figure>
+      <figure class="card" data-group="may">
+        <a class="thumb" href="images/10-widget-picker.jpg" data-index="9">
+          <img loading="lazy" src="images/10-widget-picker.jpg" alt="Widget picker">
+        </a>
+        <figcaption>
+          <span class="num">10</span>
+          <h2>Widget picker</h2>
+          <p>Panel Widgets dengan kategori Featured/Battery/Chrome/Clock/Contacts dan preview Gemini + People &amp; pets.</p>
+          <div class="meta"><span>1000×1037 px</span>
+            <a href="https://www.androidheadlines.com/2026/05/aluminum-os-just-leaked-in-a-16-minute-video-and-it-looks-a-lot-like-stock-android.html" target="_blank" rel="noopener">sumber ↗</a></div>
+        </figcaption>
+      </figure>
+      <figure class="card" data-group="may">
+        <a class="thumb" href="images/11-volume-panel.jpg" data-index="10">
+          <img loading="lazy" src="images/11-volume-panel.jpg" alt="Volume panel">
+        </a>
+        <figcaption>
+          <span class="num">11</span>
+          <h2>Volume panel</h2>
+          <p>Panel volume compact: Output, Input, Mic noise cancellation, Spatial audio; screenshot thumbnail di kiri bawah.</p>
+          <div class="meta"><span>1000×1037 px</span>
+            <a href="https://www.androidheadlines.com/2026/05/aluminum-os-just-leaked-in-a-16-minute-video-and-it-looks-a-lot-like-stock-android.html" target="_blank" rel="noopener">sumber ↗</a></div>
+        </figcaption>
+      </figure>
+      <figure class="card" data-group="may">
+        <a class="thumb" href="images/12-files-multitasking.jpg" data-index="11">
+          <img loading="lazy" src="images/12-files-multitasking.jpg" alt="Multi-window Files + dialog AI">
+        </a>
+        <figcaption>
+          <span class="num">12</span>
+          <h2>Multi-window Files + dialog AI</h2>
+          <p>Dua jendela Files bertumpuk, dialog &quot;Boost your productivity with AI&quot;, desktop folder di belakang.</p>
+          <div class="meta"><span>710×736 px</span>
+            <a href="https://www.androidheadlines.com/2026/05/aluminum-os-just-leaked-in-a-16-minute-video-and-it-looks-a-lot-like-stock-android.html" target="_blank" rel="noopener">sumber ↗</a></div>
+        </figcaption>
+      </figure>
+      <figure class="card" data-group="may">
+        <a class="thumb" href="images/13-compact-notifications.jpg" data-index="12">
+          <img loading="lazy" src="images/13-compact-notifications.jpg" alt="Notifikasi compact (samping)">
+        </a>
+        <figcaption>
+          <span class="num">13</span>
+          <h2>Notifikasi compact (samping)</h2>
+          <p>Panel notifikasi kecil di kanan atas, terpisah dari Quick Settings.</p>
+          <div class="meta"><span>710×736 px</span>
+            <a href="https://www.androidheadlines.com/2026/05/aluminum-os-just-leaked-in-a-16-minute-video-and-it-looks-a-lot-like-stock-android.html" target="_blank" rel="noopener">sumber ↗</a></div>
+        </figcaption>
+      </figure>
+      <figure class="card" data-group="may">
+        <a class="thumb" href="images/14-file-manager-new-folder.jpg" data-index="13">
+          <img loading="lazy" src="images/14-file-manager-new-folder.jpg" alt="File manager (New folder)">
+        </a>
+        <figcaption>
+          <span class="num">14</span>
+          <h2>File manager (New folder)</h2>
+          <p>Jendela Files: sidebar Recents/Images/Audio/Videos/Downloads, breadcrumb, search, jendela kedua di belakang.</p>
+          <div class="meta"><span>1120×728 px</span>
+            <a href="https://9to5google.com/2026/05/12/android-desktop-os-leak/" target="_blank" rel="noopener">sumber ↗</a></div>
+        </figcaption>
+      </figure>
+      <figure class="card" data-group="may">
+        <a class="thumb" href="images/15-gemini-app-window.jpg" data-index="14">
+          <img loading="lazy" src="images/15-gemini-app-window.jpg" alt="Jendela aplikasi Gemini">
+        </a>
+        <figcaption>
+          <span class="num">15</span>
+          <h2>Jendela aplikasi Gemini</h2>
+          <p>Contoh aplikasi Google yang cuma web-wrapper: &quot;Sign in to use Gemini&quot; di dalam window.</p>
+          <div class="meta"><span>1120×728 px</span>
+            <a href="https://9to5google.com/2026/05/12/android-desktop-os-leak/" target="_blank" rel="noopener">sumber ↗</a></div>
+        </figcaption>
+      </figure>
+      <figure class="card" data-group="may">
+        <a class="thumb" href="images/16-settings-wallpaper-style.jpg" data-index="15">
+          <img loading="lazy" src="images/16-settings-wallpaper-style.jpg" alt="Settings — Wallpaper &amp; style">
+        </a>
+        <figcaption>
+          <span class="num">16</span>
+          <h2>Settings — Wallpaper &amp; style</h2>
+          <p>Jendela Settings dengan sidebar, clock preview, pemilih warna, dan window controls ala desktop.</p>
+          <div class="meta"><span>1600×900 px</span>
+            <a href="https://helentech.jp/news-aluminium-os-hands-on-leak-virtual-desktops-link-to-ios-86044" target="_blank" rel="noopener">sumber ↗</a></div>
+        </figcaption>
+      </figure>
+      <figure class="card" data-group="may">
+        <a class="thumb" href="images/17-about-device.jpg" data-index="16">
+          <img loading="lazy" src="images/17-about-device.jpg" alt="Settings — About device">
+        </a>
+        <figcaption>
+          <span class="num">17</span>
+          <h2>Settings — About device</h2>
+          <p>Device name Multi-device ARM64, model, dan Android version 17.</p>
+          <div class="meta"><span>1000×650 px</span>
+            <a href="https://gadgets.beebom.com/news/googles-aluminium-os-just-leaked-in-detail-ahead-of-google-io-2026" target="_blank" rel="noopener">sumber ↗</a></div>
+        </figcaption>
+      </figure>
+      <figure class="card" data-group="may">
+        <a class="thumb" href="images/18-android-version-17.jpg" data-index="17">
+          <img loading="lazy" src="images/18-android-version-17.jpg" alt="Settings — Android version 17">
+        </a>
+        <figcaption>
+          <span class="num">18</span>
+          <h2>Settings — Android version 17</h2>
+          <p>Konfirmasi basis Android 17, security update 5 Mei 2026, kernel 6.12, build &quot;Ported.By.MysticTech&quot;.</p>
+          <div class="meta"><span>1612×1080 px</span>
+            <a href="https://www.theverge.com/tech/928598/google-aluminium-os-mystic-leaks-video" target="_blank" rel="noopener">sumber ↗</a></div>
+        </figcaption>
+      </figure>
+</main>
+<footer>
+  <h3>Sumber</h3>
+  <ul>
+        <li><a href="https://9to5google.com/2026/01/27/android-desktop-leak/" target="_blank" rel="noopener">9to5Google — Android desktop leak (Jan 2026)</a></li>
+        <li><a href="https://9to5google.com/2026/05/12/android-desktop-os-leak/" target="_blank" rel="noopener">9to5Google — desktop OS leak (Mei 2026)</a></li>
+        <li><a href="https://www.androidauthority.com/google-aluminium-os-leak-3665979/" target="_blank" rel="noopener">Android Authority — massive leak (Mei 2026)</a></li>
+        <li><a href="https://www.theverge.com/tech/928598/google-aluminium-os-mystic-leaks-video" target="_blank" rel="noopener">The Verge — 16-minute leaked video</a></li>
+        <li><a href="https://gadgets.beebom.com/news/googles-aluminium-os-just-leaked-in-detail-ahead-of-google-io-2026" target="_blank" rel="noopener">Beebom — kumpulan screenshot</a></li>
+        <li><a href="https://www.androidheadlines.com/2026/05/aluminum-os-just-leaked-in-a-16-minute-video-and-it-looks-a-lot-like-stock-android.html" target="_blank" rel="noopener">Android Headlines — hands-on leak</a></li>
+        <li><a href="https://www.xda-developers.com/google-may-finally-have-the-right-laptop-os-but-it-picked-the-messiest-possible-path-to-get-there/" target="_blank" rel="noopener">XDA Developers — analisis UI</a></li>
+        <li><a href="https://www.youtube.com/watch?v=dXmFIfv_tIA" target="_blank" rel="noopener">Video asli Mystic Leaks (YouTube)</a></li>
+  </ul>
+  <p style="color:#707a90;font-size:12px">Catatan: ini build development awal yang berjalan di VM; tampilan final bisa berubah.
+  Virtual desktops, Recents view, task manager, dan gesture touchpad hanya terlihat di video leak, bukan di screenshot diam.</p>
+</footer>
+<div id="lightbox">
+  <button id="close" aria-label="close">×</button>
+  <img id="lbimg" src="" alt="">
+  <div class="cap" id="lbcap"></div>
+  <div class="hint">← → untuk navigasi · Esc untuk tutup</div>
+</div>
+<script>
+const items = [{"file": "images/01-bug-report-desktop.jpg", "title": "Desktop ALOS — multi-window", "note": "Status bar di atas (jam, tanggal, Wi‑Fi, baterai, EN, Gemini), taskbar/dock di bawah, 2 jendela Chrome + Play Store."}, {"file": "images/02-bug-report-split-screen.jpg", "title": "Split-screen + chrome://version", "note": "Bukti build: OS Android 16, build ZL1A.260119.001.A1. Dua jendela Chrome 50:50, tombol window control kanan atas."}, {"file": "images/03-bug-report-windowed-apps.jpg", "title": "Aplikasi berjendela + taskbar", "note": "Jendela freeform bisa di-resize, tombol minimize/maximize/close ala desktop, dock ikon aplikasi."}, {"file": "images/04-bug-report-play-store.jpg", "title": "Play Store versi desktop", "note": "Google Play Store dengan tab, search, dan tombol Update/Uninstall di dalam jendela."}, {"file": "images/05-home-screen-app-drawer.jpg", "title": "Home screen + app drawer", "note": "Wallpaper biru, search bar Google, ikon Play Store & folder Google, dock bawah, app drawer tengah dengan grid aplikasi (termasuk Link to iOS)."}, {"file": "images/06-home-screen-context-menu.jpg", "title": "Klik kanan di desktop", "note": "Menu konteks: Wallpaper & style, Widgets, Apps list, Home settings, New folder. Widget tanggal + cuaca di kiri atas."}, {"file": "images/07-home-screen-dark.jpg", "title": "Home screen wallpaper gelap", "note": "Varian wallpaper gelap; search bar, shortcut Play Store & Google, status bar kanan, dock bawah."}, {"file": "images/08-quick-settings.jpg", "title": "Quick Settings compact", "note": "Panel turun dari kanan atas: slider brightness, Wi‑Fi, Bluetooth, Modes, Quick Share, dll."}, {"file": "images/09-notification-shade.jpg", "title": "Notification panel", "note": "Notifikasi Device Setup, USB debugging, Charging this device; bagian Silent terpisah."}, {"file": "images/10-widget-picker.jpg", "title": "Widget picker", "note": "Panel Widgets dengan kategori Featured/Battery/Chrome/Clock/Contacts dan preview Gemini + People & pets."}, {"file": "images/11-volume-panel.jpg", "title": "Volume panel", "note": "Panel volume compact: Output, Input, Mic noise cancellation, Spatial audio; screenshot thumbnail di kiri bawah."}, {"file": "images/12-files-multitasking.jpg", "title": "Multi-window Files + dialog AI", "note": "Dua jendela Files bertumpuk, dialog \"Boost your productivity with AI\", desktop folder di belakang."}, {"file": "images/13-compact-notifications.jpg", "title": "Notifikasi compact (samping)", "note": "Panel notifikasi kecil di kanan atas, terpisah dari Quick Settings."}, {"file": "images/14-file-manager-new-folder.jpg", "title": "File manager (New folder)", "note": "Jendela Files: sidebar Recents/Images/Audio/Videos/Downloads, breadcrumb, search, jendela kedua di belakang."}, {"file": "images/15-gemini-app-window.jpg", "title": "Jendela aplikasi Gemini", "note": "Contoh aplikasi Google yang cuma web-wrapper: \"Sign in to use Gemini\" di dalam window."}, {"file": "images/16-settings-wallpaper-style.jpg", "title": "Settings — Wallpaper & style", "note": "Jendela Settings dengan sidebar, clock preview, pemilih warna, dan window controls ala desktop."}, {"file": "images/17-about-device.jpg", "title": "Settings — About device", "note": "Device name Multi-device ARM64, model, dan Android version 17."}, {"file": "images/18-android-version-17.jpg", "title": "Settings — Android version 17", "note": "Konfirmasi basis Android 17, security update 5 Mei 2026, kernel 6.12, build \"Ported.By.MysticTech\"."}];
+const lb = document.getElementById('lightbox');
+let cur = 0;
+function show(n) {
+  cur = (n + items.length) % items.length;
+  document.getElementById('lbimg').src = items[cur].file;
+  document.getElementById('lbcap').textContent = (cur+1).toString().padStart(2,'0') + ' — ' + items[cur].title + ' · ' + items[cur].note;
+  lb.classList.add('open');
+}
+document.querySelectorAll('.thumb').forEach(a => a.addEventListener('click', e => {
+  e.preventDefault(); show(Number(a.dataset.index));
+}));
+document.getElementById('close').onclick = () => lb.classList.remove('open');
+lb.addEventListener('click', e => { if (e.target === lb) lb.classList.remove('open'); });
+document.addEventListener('keydown', e => {
+  if (!lb.classList.contains('open')) return;
+  if (e.key === 'Escape') lb.classList.remove('open');
+  if (e.key === 'ArrowRight') show(cur + 1);
+  if (e.key === 'ArrowLeft') show(cur - 1);
+});
+document.querySelectorAll('.bar button').forEach(btn => btn.addEventListener('click', () => {
+  document.querySelectorAll('.bar button').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  const f = btn.dataset.filter;
+  document.querySelectorAll('.card').forEach(c => c.hidden = f !== 'all' && c.dataset.group !== f);
+}));
+</script>
+</body>
+</html>

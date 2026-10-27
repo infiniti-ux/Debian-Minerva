@@ -1,0 +1,200 @@
+[
+  {
+    "file": "images/01-bug-report-desktop.jpg",
+    "title": "Desktop ALOS — multi-window",
+    "group": "Leak Jan 2026 — ALOS / Android 16 (bug report)",
+    "note": "Status bar di atas (jam, tanggal, Wi‑Fi, baterai, EN, Gemini), taskbar/dock di bawah, 2 jendela Chrome + Play Store.",
+    "source_url": "https://www.androidauthority.com/google-aluminium-os-first-look-bug-report-3635801/",
+    "credit": "Google Issue Tracker via 9to5Google / Android Authority",
+    "width": 1920,
+    "height": 1080,
+    "upscaled": null
+  },
+  {
+    "file": "images/02-bug-report-split-screen.jpg",
+    "title": "Split-screen + chrome://version",
+    "group": "Leak Jan 2026 — ALOS / Android 16 (bug report)",
+    "note": "Bukti build: OS Android 16, build ZL1A.260119.001.A1. Dua jendela Chrome 50:50, tombol window control kanan atas.",
+    "source_url": "https://pokde.net/system/software/operating-system/aluminum-os-leak",
+    "credit": "Google Issue Tracker via Pokde / 9to5Google",
+    "width": 1200,
+    "height": 800,
+    "upscaled": null
+  },
+  {
+    "file": "images/03-bug-report-windowed-apps.jpg",
+    "title": "Aplikasi berjendela + taskbar",
+    "group": "Leak Jan 2026 — ALOS / Android 16 (bug report)",
+    "note": "Jendela freeform bisa di-resize, tombol minimize/maximize/close ala desktop, dock ikon aplikasi.",
+    "source_url": "https://techbuzz.ai/articles/google-accidentally-leaks-aluminium-os-in-action",
+    "credit": "Google Issue Tracker via TechBuzz / 9to5Google",
+    "width": 1000,
+    "height": 667,
+    "upscaled": null
+  },
+  {
+    "file": "images/04-bug-report-play-store.jpg",
+    "title": "Play Store versi desktop",
+    "group": "Leak Jan 2026 — ALOS / Android 16 (bug report)",
+    "note": "Google Play Store dengan tab, search, dan tombol Update/Uninstall di dalam jendela.",
+    "source_url": "https://www.androidauthority.com/google-aluminium-os-first-look-bug-report-3635801/",
+    "credit": "Google Issue Tracker via Android Authority",
+    "width": 1920,
+    "height": 1080,
+    "upscaled": null
+  },
+  {
+    "file": "images/05-home-screen-app-drawer.jpg",
+    "title": "Home screen + app drawer",
+    "group": "Leak Mei 2026 — Mystic Leaks / Android 17 (UTM Mac)",
+    "note": "Wallpaper biru, search bar Google, ikon Play Store & folder Google, dock bawah, app drawer tengah dengan grid aplikasi (termasuk Link to iOS).",
+    "source_url": "https://gadgets.beebom.com/news/googles-aluminium-os-just-leaked-in-detail-ahead-of-google-io-2026",
+    "credit": "Mystic Leaks via Beebom / Android Authority",
+    "width": 1600,
+    "height": 900,
+    "upscaled": null
+  },
+  {
+    "file": "images/06-home-screen-context-menu.jpg",
+    "title": "Klik kanan di desktop",
+    "group": "Leak Mei 2026 — Mystic Leaks / Android 17 (UTM Mac)",
+    "note": "Menu konteks: Wallpaper & style, Widgets, Apps list, Home settings, New folder. Widget tanggal + cuaca di kiri atas.",
+    "source_url": "https://www.xda-developers.com/google-may-finally-have-the-right-laptop-os-but-it-picked-the-messiest-possible-path-to-get-there/",
+    "credit": "Mystic Leaks via XDA",
+    "width": 1500,
+    "height": 843,
+    "upscaled": null
+  },
+  {
+    "file": "images/07-home-screen-dark.jpg",
+    "title": "Home screen wallpaper gelap",
+    "group": "Leak Mei 2026 — Mystic Leaks / Android 17 (UTM Mac)",
+    "note": "Varian wallpaper gelap; search bar, shortcut Play Store & Google, status bar kanan, dock bawah.",
+    "source_url": "https://9to5google.com/2026/05/12/android-desktop-os-leak/",
+    "credit": "Mystic Leaks via 9to5Google",
+    "width": 1120,
+    "height": 728,
+    "upscaled": 2
+  },
+  {
+    "file": "images/08-quick-settings.jpg",
+    "title": "Quick Settings compact",
+    "group": "Leak Mei 2026 — Mystic Leaks / Android 17 (UTM Mac)",
+    "note": "Panel turun dari kanan atas: slider brightness, Wi‑Fi, Bluetooth, Modes, Quick Share, dll.",
+    "source_url": "https://gadgets.beebom.com/news/googles-aluminium-os-just-leaked-in-detail-ahead-of-google-io-2026",
+    "credit": "Mystic Leaks via Beebom / Android Authority",
+    "width": 1254,
+    "height": 1300,
+    "upscaled": 2
+  },
+  {
+    "file": "images/09-notification-shade.jpg",
+    "title": "Notification panel",
+    "group": "Leak Mei 2026 — Mystic Leaks / Android 17 (UTM Mac)",
+    "note": "Notifikasi Device Setup, USB debugging, Charging this device; bagian Silent terpisah.",
+    "source_url": "https://gadgets.beebom.com/news/googles-aluminium-os-just-leaked-in-detail-ahead-of-google-io-2026",
+    "credit": "Mystic Leaks via Beebom / Android Authority",
+    "width": 1254,
+    "height": 1300,
+    "upscaled": 2
+  },
+  {
+    "file": "images/10-widget-picker.jpg",
+    "title": "Widget picker",
+    "group": "Leak Mei 2026 — Mystic Leaks / Android 17 (UTM Mac)",
+    "note": "Panel Widgets dengan kategori Featured/Battery/Chrome/Clock/Contacts dan preview Gemini + People & pets.",
+    "source_url": "https://www.androidheadlines.com/2026/05/aluminum-os-just-leaked-in-a-16-minute-video-and-it-looks-a-lot-like-stock-android.html",
+    "credit": "Mystic Leaks via Android Headlines",
+    "width": 1000,
+    "height": 1037,
+    "upscaled": null
+  },
+  {
+    "file": "images/11-volume-panel.jpg",
+    "title": "Volume panel",
+    "group": "Leak Mei 2026 — Mystic Leaks / Android 17 (UTM Mac)",
+    "note": "Panel volume compact: Output, Input, Mic noise cancellation, Spatial audio; screenshot thumbnail di kiri bawah.",
+    "source_url": "https://www.androidheadlines.com/2026/05/aluminum-os-just-leaked-in-a-16-minute-video-and-it-looks-a-lot-like-stock-android.html",
+    "credit": "Mystic Leaks via Android Headlines",
+    "width": 1000,
+    "height": 1037,
+    "upscaled": null
+  },
+  {
+    "file": "images/12-files-multitasking.jpg",
+    "title": "Multi-window Files + dialog AI",
+    "group": "Leak Mei 2026 — Mystic Leaks / Android 17 (UTM Mac)",
+    "note": "Dua jendela Files bertumpuk, dialog \"Boost your productivity with AI\", desktop folder di belakang.",
+    "source_url": "https://www.androidheadlines.com/2026/05/aluminum-os-just-leaked-in-a-16-minute-video-and-it-looks-a-lot-like-stock-android.html",
+    "credit": "Mystic Leaks via Android Headlines",
+    "width": 710,
+    "height": 736,
+    "upscaled": 2
+  },
+  {
+    "file": "images/13-compact-notifications.jpg",
+    "title": "Notifikasi compact (samping)",
+    "group": "Leak Mei 2026 — Mystic Leaks / Android 17 (UTM Mac)",
+    "note": "Panel notifikasi kecil di kanan atas, terpisah dari Quick Settings.",
+    "source_url": "https://www.androidheadlines.com/2026/05/aluminum-os-just-leaked-in-a-16-minute-video-and-it-looks-a-lot-like-stock-android.html",
+    "credit": "Mystic Leaks via Android Headlines",
+    "width": 710,
+    "height": 736,
+    "upscaled": 2
+  },
+  {
+    "file": "images/14-file-manager-new-folder.jpg",
+    "title": "File manager (New folder)",
+    "group": "Leak Mei 2026 — Mystic Leaks / Android 17 (UTM Mac)",
+    "note": "Jendela Files: sidebar Recents/Images/Audio/Videos/Downloads, breadcrumb, search, jendela kedua di belakang.",
+    "source_url": "https://9to5google.com/2026/05/12/android-desktop-os-leak/",
+    "credit": "Mystic Leaks via 9to5Google",
+    "width": 1120,
+    "height": 728,
+    "upscaled": 2
+  },
+  {
+    "file": "images/15-gemini-app-window.jpg",
+    "title": "Jendela aplikasi Gemini",
+    "group": "Leak Mei 2026 — Mystic Leaks / Android 17 (UTM Mac)",
+    "note": "Contoh aplikasi Google yang cuma web-wrapper: \"Sign in to use Gemini\" di dalam window.",
+    "source_url": "https://9to5google.com/2026/05/12/android-desktop-os-leak/",
+    "credit": "Mystic Leaks via 9to5Google",
+    "width": 1120,
+    "height": 728,
+    "upscaled": 2
+  },
+  {
+    "file": "images/16-settings-wallpaper-style.jpg",
+    "title": "Settings — Wallpaper & style",
+    "group": "Leak Mei 2026 — Mystic Leaks / Android 17 (UTM Mac)",
+    "note": "Jendela Settings dengan sidebar, clock preview, pemilih warna, dan window controls ala desktop.",
+    "source_url": "https://helentech.jp/news-aluminium-os-hands-on-leak-virtual-desktops-link-to-ios-86044",
+    "credit": "Mystic Leaks via HelenTech / Android Authority",
+    "width": 1600,
+    "height": 900,
+    "upscaled": null
+  },
+  {
+    "file": "images/17-about-device.jpg",
+    "title": "Settings — About device",
+    "group": "Leak Mei 2026 — Mystic Leaks / Android 17 (UTM Mac)",
+    "note": "Device name Multi-device ARM64, model, dan Android version 17.",
+    "source_url": "https://gadgets.beebom.com/news/googles-aluminium-os-just-leaked-in-detail-ahead-of-google-io-2026",
+    "credit": "Mystic Leaks via Beebom / Android Authority",
+    "width": 1000,
+    "height": 650,
+    "upscaled": null
+  },
+  {
+    "file": "images/18-android-version-17.jpg",
+    "title": "Settings — Android version 17",
+    "group": "Leak Mei 2026 — Mystic Leaks / Android 17 (UTM Mac)",
+    "note": "Konfirmasi basis Android 17, security update 5 Mei 2026, kernel 6.12, build \"Ported.By.MysticTech\".",
+    "source_url": "https://www.theverge.com/tech/928598/google-aluminium-os-mystic-leaks-video",
+    "credit": "Mystic Leaks via The Verge / Android Authority",
+    "width": 1612,
+    "height": 1080,
+    "upscaled": null
+  }
+]

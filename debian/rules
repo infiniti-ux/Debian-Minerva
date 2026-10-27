@@ -1,0 +1,24 @@
+#!/usr/bin/make -f
+export DH_VERBOSE = 1
+export CARGO_HOME = $(CURDIR)/.cargo-dh
+export CARGO_NET_OFFLINE = true
+
+%:
+	dh $@
+
+override_dh_auto_build:
+	cargo build --release --offline
+
+override_dh_auto_test:
+	cargo test --release --offline
+
+override_dh_auto_install:
+	install -Dm755 target/release/minerva-sessiond debian/debian-minerva/usr/bin/minerva-sessiond
+	mkdir -p debian/debian-minerva/usr/share/debian-minerva
+	cp -r web/. debian/debian-minerva/usr/share/debian-minerva/web/
+	install -Dm644 packaging/minerva.desktop debian/debian-minerva/usr/share/xsessions/minerva.desktop
+	install -Dm644 packaging/minerva-session.service debian/debian-minerva/usr/lib/systemd/user/minerva-session.service
+
+override_dh_auto_clean:
+	cargo clean
+	rm -rf .cargo-dh
