@@ -1,3 +1,17 @@
+debian-minerva (0.3.1) unstable; urgency=medium
+
+  * Window placement fix: chromium honours --wm-class, not --class, so the
+    Openbox application rules (topbar/dock/desktop/panels) never matched and
+    every shell window fell back to a centred default-sized window. Panels
+    and shell windows now set --wm-class (plus --class for compatibility),
+    the rc.xml rules match both WM_CLASS instance and class, and the session
+    passes explicit per-role --window-size/--window-position (and
+    --start-fullscreen for the desktop) as a fallback.
+  * Fix E0283 (ambiguous `.into()`) in the missing-token error response.
+  * Drop dead Value::with() helper (build warning).
+
+ -- Debian Minerva contributors <minerva@example.org>  Mon, 27 Oct 2026 21:20:00 +0700
+
 debian-minerva (0.3.0) unstable; urgency=medium
 
   * Real desktop session on X11: Openbox window manager, Minerva shell as

@@ -242,7 +242,7 @@ impl Exec {
         let url = self.shell_url(role);
         let profile = format!("{}/minerva/panels", self.runtime_dir);
         let script = format!(
-            "exec {} --app='{}' --class=minerva-{} --user-data-dir='{}' \
+            "exec {} --app='{}' --wm-class=minerva-{2} --class=minerva-{2} --user-data-dir='{3}' \
              --no-first-run --no-default-browser-check --disable-session-crashed-bubble \
              --password-store=basic --disable-translate",
             browser, url, role, profile
