@@ -35,11 +35,9 @@
     { id: 'calendar', name: 'Calendar', icon: 'calendar', group: 'Utilities', w: 720, h: 520, pinned: false, summary: 'Your schedule' },
     { id: 'notes', name: 'Notes', icon: 'note', group: 'Utilities', w: 600, h: 460, pinned: false, summary: 'Scratchpad' },
     { id: 'gallery', name: 'Wallpapers', icon: 'image', group: 'Utilities', w: 780, h: 520, pinned: false, summary: 'Choose a wallpaper' },
-    { id: 'mail', name: 'Mail', icon: 'mail', group: 'Internet', w: 900, h: 560, pinned: false, summary: 'Local mail client' },
     { id: 'music', name: 'Music', icon: 'music', group: 'Media', w: 720, h: 480, pinned: false, summary: 'Local audio player' },
     { id: 'camera', name: 'Camera', icon: 'camera', group: 'Media', w: 640, h: 480, pinned: false, summary: 'Webcam preview' },
     { id: 'help', name: 'Help & About', icon: 'info', group: 'System', w: 700, h: 500, pinned: false, summary: 'About Debian Minerva' },
-    { id: 'widgets', name: 'Widgets', icon: 'widgets', group: 'Utilities', w: 760, h: 520, pinned: false, summary: 'Desktop widget picker' },
     { id: 'display', name: 'Displays', icon: 'monitor', group: 'System', w: 700, h: 480, pinned: false, summary: 'Screen layout' }
   ];
   var appById = function (id) { return APPS.filter(function (a) { return a.id === id; })[0] || { id: id, name: id, icon: 'info', w: 720, h: 480, summary: '' }; };
@@ -52,7 +50,7 @@
 
   function defaultState() {
     return {
-      de: 'Debian Minerva', version: '0.1.0', seq: 1,
+      de: 'Debian Minerva', version: '0.5.5', seq: 1,
       theme: 'light', accent: '#a80030', wallpaper: 'swirl', scale: 1,
       volume: 0.65, brightness: 0.82,
       active_workspace: 0, show_overview: false, show_launcher: false,
@@ -69,9 +67,10 @@
       var raw = localStorage.getItem(STORE);
       if (!raw) return;
       var v = JSON.parse(raw);
-      ['theme', 'accent', 'wallpaper', 'scale', 'volume', 'brightness', 'active_workspace', 'pinned', 'recent_apps', 'toggles'].forEach(function (k) {
+      ['theme', 'accent', 'wallpaper', 'scale', 'volume', 'brightness', 'active_workspace', 'pinned', 'recent_apps'].forEach(function (k) {
         if (v[k] !== undefined) S[k] = v[k];
       });
+      if (v.toggles) S.toggles = Object.assign({}, S.toggles, v.toggles);
     } catch (e) {}
   }
   var saveTimer;
@@ -89,6 +88,7 @@
   }
 
   function fromServer(snap) {
+    var keep = { realwins: S.realwins, curdesk: S.curdesk };
     var t = {};
     (snap.toggles || []).forEach(function (x) { t[x.key] = x.value; });
     S = Object.assign(defaultState(), {
@@ -103,16 +103,21 @@
       workspaces: snap.workspaces || S.workspaces,
       notifications: snap.notifications || [],
       pinned: snap.pinned || S.pinned, recent_apps: snap.recent_apps || []
-    });
+    }, keep);
     S.next_id = Math.max(10, S.windows.reduce(function (m, w) { return Math.max(m, w.id); }, 0) + 1);
     S.z_top = Math.max(10, S.windows.reduce(function (m, w) { return Math.max(m, w.z); }, 0));
   }
 
   // --------------------------------------------------------- local reducer
   function avW() { return window.innerWidth; }
-  function avH() { return Math.max(300, window.innerHeight - 88); }
+  function avH() { return Math.max(300, window.innerHeight - 96); }
 
   function focusWin(id) {
+    if (S.z_top > 100000) {
+      var sorted = S.windows.slice().sort(function (a, b) { return a.z - b.z; });
+      sorted.forEach(function (x, i) { x.z = 10 + i; });
+      S.z_top = 10 + sorted.length;
+    }
     S.z_top += 1;
     var w = S.windows.filter(function (x) { return x.id === id; })[0];
     if (w) { w.z = S.z_top; if (w.state === 'minimized') w.state = 'normal'; }
@@ -132,7 +137,7 @@
           S.windows.push({
             id: S.next_id++, app: a.app, title: def.name,
             x: Math.min(90 + cascade, Math.max(20, avW() - def.w - 40)),
-            y: 40 + cascade, w: Math.min(def.w, avW() - 60), h: Math.min(def.h, avH() - 40),
+            y: Math.min(40 + cascade, Math.max(8, avH() - 160)), w: Math.min(def.w, avW() - 60), h: Math.min(def.h, avH() - 40),
             z: S.z_top, state: 'normal', workspace: S.active_workspace, restore: null
           });
         }
@@ -170,13 +175,13 @@
         S.active_workspace = S.workspaces.length - 1; break;
       case 'remove_workspace':
         i = Number(a.index);
-        if (S.workspaces.length > 1 && i < S.workspaces.length) {
+        if (S.workspaces.length > 1 && i >= 0 && i < S.workspaces.length) {
           S.workspaces.splice(i, 1);
           S.windows.forEach(function (x) { if (x.workspace === i) x.workspace = 0; else if (x.workspace > i) x.workspace--; });
           S.active_workspace = Math.min(S.active_workspace, S.workspaces.length - 1);
         }
         break;
-      case 'switch_workspace': if (Number(a.index) < S.workspaces.length) { S.active_workspace = Number(a.index); S.show_overview = false; } break;
+      case 'switch_workspace': if (Number(a.index) >= 0 && Number(a.index) < S.workspaces.length) { S.active_workspace = Number(a.index); S.show_overview = false; } break;
       case 'move_window_to_workspace': w = findWin(a.id); if (w) w.workspace = Number(a.index); break;
       case 'overview': S.show_overview = a.value === undefined ? !S.show_overview : !!a.value; S.show_launcher = false; break;
       case 'launcher': S.show_launcher = a.value === undefined ? !S.show_launcher : !!a.value; S.show_overview = false; break;
@@ -190,7 +195,7 @@
       case 'notify': S.notifications.unshift({ id: S.next_id++, app: a.app || 'system', icon: a.icon || 'info', title: a.title || '', body: a.body || '', time: 'just now' }); S.notifications = S.notifications.slice(0, 30); break;
       case 'dismiss_notification': S.notifications = S.notifications.filter(function (n) { return n.id !== Number(a.id); }); break;
       case 'clear_notifications': S.notifications = []; break;
-      case 'minimize_all': S.windows.forEach(function (x) { x.state = 'minimized'; }); break;
+      case 'minimize_all': S.windows.forEach(function (x) { if (x.workspace === S.active_workspace) x.state = 'minimized'; }); break;
       case 'close_all': S.windows.slice().forEach(function (x) { destroyWindow(x.id); }); S.windows = []; break;
       case 'reset': S.windows.slice().forEach(function (x) { destroyWindow(x.id); }); S = defaultState(); break;
     }
@@ -206,13 +211,14 @@
     var key = a.type + ':' + (a.id || '');
     clearTimeout(actionTimers[key]);
     actionTimers[key] = setTimeout(function () {
-      API.action(a).then(function (res) { if (res && res.events && res.events.length) handleEvents(res.events); });
+      API.action(a).then(function (res) { if (res && res.events && res.events.length) handleEvents(res.events); })
+        .catch(function () {});
     }, (a.type === 'move' || a.type === 'resize') ? 220 : 0);
   }
 
   function handleEvents(events) {
     if (!events || !events.length) return;
-    var actionTypes = ['launch', 'close', 'set_theme', 'set_accent', 'set_wallpaper', 'switch_workspace', 'reset', 'notify', 'toggle'];
+    var actionTypes = ['launch', 'close', 'focus', 'minimize', 'maximize', 'set_theme', 'set_accent', 'set_wallpaper', 'set_scale', 'set_volume', 'set_brightness', 'switch_workspace', 'reset', 'notify', 'toggle'];
     events.forEach(function (ev) {
       if (actionTypes.indexOf(ev.type) !== -1) applyLocal(ev);
     });
@@ -270,7 +276,9 @@
       return;
     }
     try { localStorage.setItem('minerva.lp.role', role); localStorage.setItem('minerva.lp.ts', String(now)); } catch (e) {}
-    API.openPanel(role);
+    API.openPanel(role).then(function (r) {
+      if (r && r.ok === false) toast('Could not open the ' + role + ' panel' + (r.error ? ': ' + r.error : ''));
+    }).catch(function () { toast('Could not open the ' + role + ' panel'); });
   }
 
   function popover(name, sel) {
@@ -294,8 +302,9 @@
   }
 
   function startPolling() {
+    var isDesk = !MODE || MODE === 'desktop';
     var lastSig = '';
-    setInterval(function () {
+    if (isDesk) setInterval(function () {
       API.getState().then(function (snap) {
         if (!snap) return;
         var sig = JSON.stringify(snap);
@@ -305,8 +314,8 @@
         render();
       });
     }, 2500);
-    setInterval(refreshRunning, 4000);
-    setInterval(function () {
+    if (isDesk || MODE === 'dock') setInterval(refreshRunning, 4000);
+    if (isDesk) setInterval(function () {
       if (!X11) return;
       API.events().then(function (evs) {
         (evs || []).forEach(function (ev) {
@@ -318,7 +327,7 @@
         });
       });
     }, 1200);
-    if (!MODE || MODE === 'desktop') {
+    if (isDesk) {
       // JS-window fallbacks requested from panel windows (launcher, dock)
       setInterval(function () {
         API.takePending().then(function (r) {
@@ -431,14 +440,19 @@
       var w = findWin(id); if (!w) return;
       var dx = e.clientX - start.x, dy = e.clientY - start.y;
       if (mode === 'move') {
-        w.x = orig.x + dx; w.y = orig.y + dy;
+        w.x = clamp(orig.x + dx, -w.w + 120, avW() - 120);
+        w.y = clamp(orig.y + dy, 0, avH() - 40);
         snapSide = null;
         if (e.clientX < 12) snapSide = 'left';
         else if (e.clientX > window.innerWidth - 12) snapSide = 'right';
         else if (e.clientY < 50) snapSide = 'full';
         showSnap(snapSide);
       } else {
-        if (mode === 'ew' || mode === 'both') w.w = Math.max(320, side === 'w' ? orig.w - dx : orig.w + dx);
+        if (mode === 'ew' || mode === 'both') {
+          var nw = Math.max(320, side === 'w' ? orig.w - dx : orig.w + dx);
+          if (side === 'w') w.x = orig.x + (orig.w - nw);
+          w.w = nw;
+        }
         if (mode === 'ns' || mode === 'both') w.h = Math.max(220, orig.h + dy);
         w.state = 'normal';
       }
@@ -505,7 +519,6 @@
     if (!MODE || MODE === 'dock' || MODE === 'desktop') renderDock();
     if (!MODE || MODE === 'launcher') renderLauncher();
     if (!MODE || MODE === 'shade') renderNotifications();
-    $$('.statusbar [data-icon]').forEach(function (e) {});
     I.hydrate(document);
     // notify app-level listeners
     Object.keys(RECORDS).forEach(function (id) {
@@ -546,17 +559,27 @@
       '<rect x="3" y="3.5" width="' + w + '" height="7" rx="1.8" fill="' + batteryFill() + '"/>' +
       (battery.charging ? '<path d="M13 2.5l-4 5.2h3l-1 3.8 4.6-5.4h-3z" fill="#fff" stroke="none"/>' : '') +
       '</svg>';
-    $('#sb-batt-num').textContent = pct + '%' + (battery.charging ? '+' : '');
-    $('#sb-battery').title = 'Battery ' + pct + '%' + (battery.charging ? ' (charging)' : '');
+    var num = $('#sb-batt-num');
+    if (num) {
+      var label = (!battery.present && API.backend === 'rust') ? 'AC' : pct + '%' + (battery.charging ? '+' : '');
+      num.textContent = label;
+      num.classList.toggle('batt-low', battery.present && !battery.charging && battery.level <= 0.2);
+      num.classList.toggle('batt-crit', battery.present && !battery.charging && battery.level <= 0.1);
+    }
+    var sbb = $('#sb-battery');
+    if (sbb) sbb.title = 'Battery ' + pct + '%' + (battery.charging ? ' (charging)' : '');
   }
   function initBattery() {
-    // native daemon
-    if (API.backend === 'rust') {
+    // native daemon — refreshed every minute so the top bar never goes stale
+    function pollSys() {
+      if (API.backend !== 'rust') return;
       API.getSystem().then(function (sys) {
-        if (!sys) return;
+        if (!sys || sys.battery_present === undefined) return;
         setBattery({ level: sys.battery_level, charging: sys.battery_charging, present: sys.battery_present });
       }).catch(function () {});
     }
+    pollSys();
+    setInterval(pollSys, 60000);
     // browser fallback / live updates
     try {
       if (navigator.getBattery) {
@@ -576,6 +599,7 @@
     var h = hex.replace('#', '');
     if (h.length === 3) h = h.split('').map(function (c) { return c + c; }).join('');
     var n = parseInt(h, 16);
+    if (!isFinite(n)) return 'rgba(168,0,48,' + a + ')';
     return 'rgba(' + ((n >> 16) & 255) + ',' + ((n >> 8) & 255) + ',' + (n & 255) + ',' + a + ')';
   }
 
@@ -590,16 +614,18 @@
     });
   }
 
+  function setText(sel, txt) { var el = $(sel); if (el && el.textContent !== txt) el.textContent = txt; }
   function renderClock() {
     var d = new Date();
     var hm = d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
     var full = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-    $('#sb-time').textContent = hm;
-    $('#sb-date').textContent = d.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' });
-    $('#dw-date').textContent = d.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' });
-    $('#qs-clock').textContent = full;
-    $('#qs-date').textContent = d.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' });
-    $('#notif-dot').classList.toggle('hidden', S.notifications.length === 0);
+    var shortDate = d.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' });
+    setText('#sb-time', hm);
+    setText('#sb-date', shortDate);
+    setText('#dw-date', shortDate);
+    setText('#qs-clock', full);
+    setText('#qs-date', d.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' }));
+    var dot = $('#notif-dot'); if (dot) dot.classList.toggle('hidden', S.notifications.length === 0);
     renderBattery();
   }
 
@@ -749,8 +775,10 @@
   function toast(msg) {
     var d = document.createElement('div');
     d.className = 'toast'; d.textContent = msg;
-    $('#toasts').appendChild(d);
-    setTimeout(function () { d.style.opacity = '0'; d.style.transition = 'opacity .3s'; setTimeout(function () { if (d.parentNode) d.parentNode.removeChild(d); }, 320); }, 2600);
+    var th = $('#toasts');
+    th.appendChild(d);
+    while (th.children.length > 4) th.removeChild(th.firstChild);
+    setTimeout(function () { d.style.opacity = '0'; d.style.transform = 'translateX(20px)'; setTimeout(function () { if (d.parentNode) d.parentNode.removeChild(d); }, 320); }, 2600);
   }
 
   function closePanels() {
@@ -784,14 +812,13 @@
     el.innerHTML = html; I.hydrate(el);
     el.classList.remove('hidden');
     var r = el.getBoundingClientRect();
-    el.style.left = Math.min(x, window.innerWidth - r.width - 8) + 'px';
-    el.style.top = Math.min(y, window.innerHeight - r.height - 8) + 'px';
+    el.style.left = Math.max(8, Math.min(x, window.innerWidth - r.width - 8)) + 'px';
+    el.style.top = Math.max(8, Math.min(y, window.innerHeight - r.height - 8)) + 'px';
   }
 
   function showDesktopMenu(x, y) {
     showMenu([
       ['Wallpaper & style', 'palette', 'settings'],
-      ['Widgets', 'widgets', 'widgets'],
       ['Apps list', 'grid', 'launcher'],
       ['sep'],
       ['New folder', 'plus', 'newfolder'],
@@ -820,12 +847,13 @@
   }
 
   function power(action) {
-    if (X11) { API.cmd(action); return; }
+    if (X11) { API.cmd(action).catch(function () { toast('Power action failed: ' + action); }); return; }
     if (action === 'lock') {
       var l = $('#lock-screen');
       l.innerHTML = '<div class="lock-clock" id="lock-clock"></div><div class="lock-date" id="lock-date"></div><img src="assets/logo.svg" alt=""><div style="font-size:12px;color:#8f9dc4;margin-top:10px">Click anywhere to unlock</div>';
       l.classList.remove('hidden');
       var tick = function () { var d = new Date(); $('#lock-clock').textContent = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); $('#lock-date').textContent = d.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' }); };
+      if (l.dataset.timer) clearInterval(Number(l.dataset.timer));
       tick(); l.dataset.timer = setInterval(tick, 1000);
       return;
     }
@@ -836,13 +864,15 @@
 
   // ---------------------------------------------------------------- events
   function wire() {
+    var tabIdx = -1;   // Alt+Tab cycling position
     // statusbar — every icon opens its own dedicated popover with real data
     $('#sb-clock').addEventListener('click', function () { popover('calendar', '#calendar-pop'); });
     $('#sb-notif').addEventListener('click', function () { togglePanel('#notif-panel'); });
     $('#sb-wifi').addEventListener('click', function () { popover('wifi', '#wifi-pop'); });
     $('#sb-audio').addEventListener('click', function () { popover('audio', '#audio-pop'); });
     $('#sb-battery').addEventListener('click', function () { popover('battery', '#battery-pop'); });
-    $('#sb-power').addEventListener('click', function (e) {
+    $('#sb-power').addEventListener('click', function () { togglePanel('#qs'); });
+    $('#qs-power').addEventListener('click', function (e) {
       e.stopPropagation();
       showMenu([
         '<button class="ctx-item" data-p="lock">' + I.svg('lock', 16) + 'Lock screen</button>',
@@ -853,7 +883,6 @@
         '<button class="ctx-item" data-p="shutdown">' + I.svg('power', 16) + 'Shut down</button>'
       ].join(''), window.innerWidth - 230, 42, '#power-menu');
     });
-    $('#qs-power').addEventListener('click', function () { power('shutdown'); });
 
     // quick settings
     $('#qs-tiles').addEventListener('click', function (e) {
@@ -895,10 +924,16 @@
     });
     $('#dock').addEventListener('contextmenu', function (e) {
       var item = e.target.closest('.dock-item');
-      if (item && item.dataset.win) {
+      if (!item) return;
+      if (item.dataset.win) {
         e.preventDefault();
         API.exec({ win_op: 'close', win_id: item.dataset.win });
         setTimeout(refreshRunning, 500);
+        return;
+      }
+      if (!X11 && item.dataset.app) {
+        var w = S.windows.filter(function (x) { return x.app === item.dataset.app; }).pop();
+        if (w) { e.preventDefault(); showWindowMenu(e, w.id); }
       }
     });
 
@@ -920,7 +955,7 @@
       if (e.key === 'Enter') {
         var first = $('#launcher-grid [data-app], #launcher-grid [data-desktop]');
         if (!first) return;
-        if (first.dataset.desktop) { API.execDesktop(first.dataset.desktop).then(function (r) { if (r && r.ok) refreshRunning(); if (MODE === 'launcher') PanelWin.selfClose(); }); }
+        if (first.dataset.desktop) { API.execDesktop(first.dataset.desktop).then(function (r) { if (r && r.ok) refreshRunning(); else toast('Could not launch ' + first.dataset.desktop); if (MODE === 'launcher') PanelWin.selfClose(); }); }
         else openApp(first.dataset.app);
       }
     });
@@ -939,14 +974,24 @@
 
     // desktop icons + search + context menu
     $('#desktop-icons').addEventListener('click', function (e) { var b = e.target.closest('[data-app]'); if (b) openApp(b.dataset.app); });
-    $('#desktop-icons').addEventListener('dblclick', function (e) { var b = e.target.closest('[data-app]'); if (b) openApp(b.dataset.app); });
     $('#desktop-search').addEventListener('click', function (e) { if (!e.target.closest('input')) $('#ds-input').focus(); });
     $('#ds-input').addEventListener('input', renderSearch);
     $('#ds-input').addEventListener('keydown', function (e) {
-      if (e.key === 'Enter') { var first = $('#search-results [data-app]'); if (first) openApp(first.dataset.app); $('#search-results').classList.add('hidden'); $('#ds-input').value = ''; }
+      if (e.key === 'Enter') {
+        var first = $('#search-results [data-app], #search-results [data-desktop]');
+        if (first) { if (first.dataset.desktop) API.execDesktop(first.dataset.desktop); else openApp(first.dataset.app); }
+        else if ($('#ds-input').value.trim()) toast('No results for “' + $('#ds-input').value.trim() + '”');
+        $('#search-results').classList.add('hidden'); $('#ds-input').value = '';
+      }
       if (e.key === 'Escape') { $('#search-results').classList.add('hidden'); $('#ds-input').blur(); }
     });
-    $('#search-results').addEventListener('click', function (e) { var b = e.target.closest('[data-app]'); if (b) { openApp(b.dataset.app); $('#search-results').classList.add('hidden'); $('#ds-input').value = ''; } });
+    $('#search-results').addEventListener('click', function (e) {
+      var b = e.target.closest('[data-app], [data-desktop]');
+      if (!b) return;
+      if (b.dataset.desktop) API.execDesktop(b.dataset.desktop).then(function (r) { if (r && !r.ok) toast('Could not launch ' + b.dataset.desktop); });
+      else openApp(b.dataset.app);
+      $('#search-results').classList.add('hidden'); $('#ds-input').value = '';
+    });
     $('#desktop-layer').addEventListener('contextmenu', function (e) { e.preventDefault(); showDesktopMenu(e.clientX, e.clientY); });
     $('#desktop-layer').addEventListener('click', function (e) { if (!e.target.closest('.desktop-icon') && !e.target.closest('.desktop-search')) closePanels(); });
 
@@ -968,7 +1013,8 @@
     $('#ov-workspaces').addEventListener('drop', function (e) {
       e.preventDefault();
       var ws = e.target.closest('[data-ws]'); var id = e.dataTransfer.getData('text/plain');
-      if (ws && id) { dispatch({ type: 'move_window_to_workspace', id: Number(id), index: Number(ws.dataset.ws) }); toast('Moved to ' + S.workspaces[Number(ws.dataset.ws)].name); }
+      var wi = ws ? Number(ws.dataset.ws) : -1;
+      if (ws && id && S.workspaces[wi]) { dispatch({ type: 'move_window_to_workspace', id: Number(id), index: wi }); toast('Moved to ' + S.workspaces[wi].name); }
     });
 
     // menus (delegated on document)
@@ -1010,6 +1056,8 @@
       var tag = (e.target.tagName || '').toLowerCase();
       var typing = tag === 'input' || tag === 'textarea' || e.target.isContentEditable;
       if (e.key === 'Escape') {
+        var sr = $('#search-results');
+        if (sr && !sr.classList.contains('hidden')) { sr.classList.add('hidden'); var dsi = $('#ds-input'); if (dsi) dsi.blur(); return; }
         if (S.show_launcher) { dispatch({ type: 'launcher', value: false }); return; }
         if (S.show_overview) { dispatch({ type: 'overview', value: false }); return; }
         closePanels(); return;
@@ -1024,8 +1072,8 @@
         var ws = S.windows.filter(function (w) { return w.workspace === S.active_workspace && w.state !== 'minimized'; });
         if (ws.length) {
           ws.sort(function (a, b) { return b.z - a.z; });
-          var next = ws[e.shiftKey ? ws.length - 1 : (ws.length > 1 ? 1 : 0)];
-          dispatch({ type: 'focus', id: next.id });
+          tabIdx = e.shiftKey ? (tabIdx <= 0 ? ws.length - 1 : tabIdx - 1) : (tabIdx + 1) % ws.length;
+          dispatch({ type: 'focus', id: ws[tabIdx].id });
         }
         return;
       }
@@ -1045,9 +1093,14 @@
       }
     });
 
+    var resizeRaf = 0;
     window.addEventListener('resize', function () {
-      S.windows.forEach(function (w) { if (w.state !== 'maximized') { w.w = Math.min(w.w, avW() - 20); w.h = Math.min(w.h, avH() - 20); } });
-      render();
+      if (resizeRaf) return;
+      resizeRaf = requestAnimationFrame(function () {
+        resizeRaf = 0;
+        S.windows.forEach(function (w) { if (w.state !== 'maximized') { w.w = Math.min(w.w, avW() - 20); w.h = Math.min(w.h, avH() - 20); } });
+        render();
+      });
     });
   }
 
@@ -1056,9 +1109,15 @@
     var el = $('#search-results');
     if (!q) { el.classList.add('hidden'); return; }
     var matches = APPS.filter(function (a) { return (a.name + ' ' + a.id + ' ' + a.summary).toLowerCase().indexOf(q) !== -1; });
-    el.innerHTML = matches.slice(0, 8).map(function (a) {
+    var html = matches.slice(0, 8).map(function (a) {
       return '<button class="sr-item" data-app="' + a.id + '">' + I.appArt(a.id, 22) + '<span>' + esc(a.name) + '</span><small>' + esc(a.group) + '</small></button>';
-    }).join('') || '<div class="sr-item muted">No results for “' + esc(q) + '”</div>';
+    }).join('');
+    if (X11) {
+      html += REAL_APPS.filter(function (a) { return (a.name + ' ' + a.id).toLowerCase().indexOf(q) !== -1; }).slice(0, 4).map(function (a) {
+        return '<button class="sr-item" data-desktop="' + esc(a.id) + '">' + I.appArt(a.id, 22) + '<span>' + esc(a.name) + '</span><small>Installed</small></button>';
+      }).join('');
+    }
+    el.innerHTML = html || '<div class="sr-item muted">No results for “' + esc(q) + '”</div>';
     I.hydrate(el);
     el.classList.remove('hidden');
   }

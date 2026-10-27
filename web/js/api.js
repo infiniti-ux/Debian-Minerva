@@ -38,11 +38,16 @@
   }
 
   async function raw(path, options) {
-    var opts = Object.assign({ signal: timeout(5000) }, options || {});
+    var ctl = new AbortController();
+    var timer = setTimeout(function () { ctl.abort(); }, 5000);
+    var opts = Object.assign({}, options || {}, { signal: ctl.signal });
     opts.headers = withToken(opts.headers);
-    var res = await fetch(path, opts);
-    if (!res.ok) throw new Error('HTTP ' + res.status);
-    return res.json();
+    try {
+      var res = await fetch(path, opts);
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      var text = await res.text();
+      return text ? JSON.parse(text) : null;
+    } finally { clearTimeout(timer); }
   }
 
   async function post(path, body) {
@@ -78,7 +83,7 @@
   function norm(p) {
     if (!p || p === '/') return '/';
     p = ('/' + p.replace(/^\/+/, '')).replace(/\/+$/, '');
-    if (p.indexOf('..') !== -1) return '/';
+    if (p.split('/').indexOf('..') !== -1) return '/';
     return p;
   }
 
@@ -151,13 +156,14 @@
       case 'accent': events.push({ type: 'set_accent', value: a[0] || '#a80030' }); out = 'accent set to ' + (a[0] || '#a80030'); break;
       case 'wallpaper': events.push({ type: 'set_wallpaper', value: a[0] || 'swirl' }); out = 'wallpaper set to ' + (a[0] || 'swirl'); break;
       case 'workspace': events.push({ type: 'switch_workspace', index: (parseInt(a[0], 10) || 1) - 1 }); out = 'switched workspace'; break;
+      case 'workspaces': out = ((ctx && ctx.workspaces) || []).map(function (w, i) { return '  ' + (i + 1) + '. ' + w.name; }).join('\n') || 'no workspaces'; break;
       case 'win': case 'windows': out = (ctx && ctx.windows || []).map(function (w) { return '  #' + w.id + ' ' + w.app.padEnd(12) + ' ' + w.state; }).join('\n') || 'no windows open'; break;
       case 'close': events.push({ type: 'close', id: parseInt(a[0], 10) || 0 }); out = 'closed window #' + (a[0] || '?'); break;
       case 'sysinfo': case 'free':
         out = 'OS       ' + sys.os + '\nKernel   ' + sys.kernel + '\nMemory   ' + sys.mem_used_mb + ' / ' + sys.mem_total_mb + ' MB\nCPUs     ' + sys.cpus + '\nSession  ' + sys.session; break;
       case 'ps': out = 'PID    APP            STATE\n' + ((ctx && ctx.windows || []).map(function (w) { return String(w.id).padEnd(6) + ' ' + w.app.padEnd(14) + ' ' + w.state; }).join('\n') || 'no processes'); break;
-      case 'neofetch': case 'minerva': out = '\x00ascii\nUSER     user@minerva\nOS       Debian Minerva\nKERNEL   ' + sys.kernel + '\nSHELL    minerva-sh (Rust)\nDE       Debian Minerva 0.1.0\nTHEME    ' + (ctx && ctx.theme || 'dark') + '\nWINDOWS  ' + (ctx && ctx.windows || []).length; break;
-      case 'about': out = 'Debian Minerva 0.1.0 — a Rust desktop session for Debian GNU/Linux.\nNo Google components. Just Debian + Rust.'; break;
+      case 'neofetch': case 'minerva': out = '\x00ascii\nUSER     user@minerva\nOS       Debian Minerva\nKERNEL   ' + sys.kernel + '\nSHELL    minerva-sh (Rust)\nDE       Debian Minerva 0.5.5\nTHEME    ' + (ctx && ctx.theme || 'dark') + '\nWINDOWS  ' + (ctx && ctx.windows || []).length; break;
+      case 'about': out = 'Debian Minerva 0.5.5 — a Rust desktop session for Debian GNU/Linux.\nNo Google components. Just Debian + Rust.'; break;
       case 'poweroff': case 'logout': out = '\x00poweroff'; break;
       case 'reboot': out = '\x00reboot'; break;
       case 'reset': events.push({ type: 'reset' }); out = 'session reset'; break;
@@ -198,7 +204,7 @@
       uptime_secs: Math.floor(performance.now() / 1000) + 3600,
       loadavg: '0.42 0.38 0.31', session: 'minerva-shell (browser preview)',
       toolkit: 'Minerva Shell / Rust-compatible core', de: 'Debian Minerva',
-      de_version: '0.1.0', rustc: 'rustc (native daemon not attached)',
+      de_version: '0.5.5', rustc: 'rustc (native daemon not attached)',
       battery_level: 0.94, battery_charging: false, battery_present: false
     };
   }
@@ -207,7 +213,7 @@
   var sessionMode = 'dev';
   async function probe() {
     try {
-      var r = await fetch('/api/v1/health', { signal: timeout(1600) });
+      var r = await fetch('/api/v1/health', { signal: timeout(1600), headers: withToken({}) });
       var j = await r.json();
       backend = (r.ok && j && j.runtime && j.runtime.indexOf('rust') !== -1) ? 'rust' : 'browser';
       if (backend === 'rust' && j && j.session_mode) sessionMode = j.session_mode;
@@ -233,7 +239,7 @@
   function sys(op, value) { return exec(Object.assign({ sys: op }, value || {})); }
   async function desktopApps() {
     if (backend !== 'rust') return [];
-    try { var j = await raw('/api/v1/desktop-apps'); return j.apps || []; } catch (e) { return []; }
+    try { var j = await raw('/api/v1/desktop-apps'); return (j && j.apps) || []; } catch (e) { return []; }
   }
   async function running() {
     if (backend !== 'rust') return { apps: [], windows: [] };
@@ -241,23 +247,25 @@
   }
   async function events() {
     if (backend !== 'rust') return [];
-    try { var j = await raw('/api/v1/events'); return j.events || []; } catch (e) { return []; }
+    try { var j = await raw('/api/v1/events'); return (j && j.events) || []; } catch (e) { return []; }
   }
   function iconUrl(name) {
     return '/api/v1/icon?name=' + encodeURIComponent(name || '') +
       (SESSION_TOKEN ? '&token=' + encodeURIComponent(SESSION_TOKEN) : '');
   }
 
+  var stateFails = 0;
   async function getState() {
     if (backend === 'rust') {
-      try { return await raw('/api/v1/state'); } catch (e) { backend = 'browser'; notify(); }
+      try { var s = await raw('/api/v1/state'); stateFails = 0; return s; }
+      catch (e) { stateFails++; if (stateFails >= 3) { stateFails = 0; backend = 'browser'; notify(); } }
     }
     return null;
   }
 
   async function getApps() {
     if (backend === 'rust') {
-      try { var j = await raw('/api/v1/apps'); return j.apps; } catch (e) {}
+      try { var j = await raw('/api/v1/apps'); return j && j.apps; } catch (e) {}
     }
     return null;
   }
@@ -266,7 +274,7 @@
     if (backend === 'rust') {
       try {
         var j = await raw('/api/v1/system');
-        return Object.assign({}, j.system, { clock: j.clock });
+        return j ? Object.assign({}, j.system, { clock: j.clock }) : systemFallback();
       } catch (e) {}
     }
     return systemFallback();
@@ -291,7 +299,7 @@
 
   async function files(path) {
     if (backend === 'rust') {
-      try { return await raw('/api/v1/files?path=' + encodeURIComponent(path || '/')); } catch (e) {}
+      try { return (await raw('/api/v1/files?path=' + encodeURIComponent(path || '/'))) || fsList(path || '/'); } catch (e) {}
     }
     return fsList(path || '/');
   }

@@ -27,6 +27,16 @@
   </script>
 </head>
 <body class="theme-dark wallpaper-swirl">
+  <script>
+    // Apply the stored theme/wallpaper before first paint — no wrong-theme flash.
+    (function () {
+      try {
+        var st = JSON.parse(localStorage.getItem('minerva.session.v1') || '{}');
+        document.body.className = 'theme-' + (st.theme === 'light' ? 'light' : 'dark') +
+          ' wallpaper-' + (['swirl', 'aurora', 'dusk', 'light', 'mesh'].indexOf(st.wallpaper) !== -1 ? st.wallpaper : 'swirl');
+      } catch (e) {}
+    })();
+  </script>
 
   <!-- boot splash & first-run wizard removed: a real session starts on the desktop -->
 
@@ -37,12 +47,11 @@
     <!-- desktop widgets / icons -->
     <div id="desktop-layer" class="desktop-layer">
       <div class="desktop-widget">
-        <div class="dw-date" id="dw-date">Mon, May 11</div>
+        <div class="dw-date" id="dw-date"></div>
       </div>
       <div class="desktop-search" id="desktop-search">
         <span class="ds-icon" data-icon="search"></span>
         <input id="ds-input" type="text" placeholder="Search Minerva" autocomplete="off" spellcheck="false">
-        <span class="ds-mic" data-icon="mic"></span>
       </div>
       <div class="desktop-icons" id="desktop-icons"></div>
     </div>
@@ -54,14 +63,14 @@
     <header id="statusbar" class="statusbar">
       <div class="sb-left">
         <button class="sb-item" id="sb-clock" title="Calendar">
-          <span id="sb-time">7:14</span><span class="sb-sep">·</span><span id="sb-date">Mon, May 11</span>
+          <span id="sb-time"></span><span class="sb-sep">·</span><span id="sb-date"></span>
         </button>
       </div>
       <div class="sb-right">
         <button class="sb-icon" id="sb-notif" title="Notifications"><span data-icon="bell"></span><i id="notif-dot" class="notif-dot hidden"></i></button>
         <button class="sb-icon" id="sb-wifi" title="Wi-Fi"><span data-icon="wifi"></span></button>
         <button class="sb-icon" id="sb-audio" title="Audio"><span data-icon="volume"></span></button>
-        <button class="sb-icon" id="sb-battery" title="Battery"><span data-battery></span><span id="sb-batt-num">94%</span></button>
+        <button class="sb-icon" id="sb-battery" title="Battery"><span data-battery></span><span id="sb-batt-num"></span></button>
         <button class="sb-icon" id="sb-power" title="Power"><span data-icon="power"></span></button>
       </div>
     </header>
@@ -84,8 +93,8 @@
     <!-- quick settings -->
     <div id="qs" class="panel qs-panel hidden" role="dialog" aria-label="Quick settings">
       <div class="qs-head">
-        <div class="qs-clock" id="qs-clock">7:14</div>
-        <div class="qs-date" id="qs-date">Monday, May 11</div>
+        <div class="qs-clock" id="qs-clock"></div>
+        <div class="qs-date" id="qs-date"></div>
         <button class="icon-btn" id="qs-power" title="Power"><span data-icon="power"></span></button>
       </div>
       <div class="qs-sliders">
@@ -128,11 +137,11 @@
     <div id="context-menu" class="context-menu hidden"></div>
     <div id="power-menu" class="context-menu hidden"></div>
     <div id="calendar-pop" class="panel calendar-pop hidden"></div>
-    <div id="wifi-pop" class="panel pop hidden"></div>
-    <div id="audio-pop" class="panel pop hidden"></div>
-    <div id="battery-pop" class="panel pop hidden"></div>
-    <div id="power-pop" class="panel pop hidden"></div>
-    <div id="settings-win" class="settings-win hidden"></div>
+    <div id="wifi-pop" class="panel pop hidden" role="dialog" aria-label="Wi-Fi"></div>
+    <div id="audio-pop" class="panel pop hidden" role="dialog" aria-label="Audio"></div>
+    <div id="battery-pop" class="panel pop hidden" role="dialog" aria-label="Power and display"></div>
+    <div id="power-pop" class="panel pop hidden" role="dialog" aria-label="Power"></div>
+    <div id="settings-win" class="settings-win hidden" role="dialog" aria-label="Settings"></div>
 
     <!-- misc -->
     <div id="snap-preview" class="snap-preview hidden"></div>

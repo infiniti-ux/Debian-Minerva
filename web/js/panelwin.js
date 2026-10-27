@@ -57,12 +57,14 @@
       if (st && !st.on) { list.innerHTML = '<div class="pop-empty">Wi-Fi is off</div>'; return; }
       API.sys('wifi_list').then(function (r) {
         var nets = (r && r.networks) || [];
+        var keepScroll = list.scrollTop;
         list.innerHTML = nets.length ? nets.map(function (n) {
           return '<button class="pop-item' + (n.active ? ' active' : '') + '" data-ssid="' + esc(n.ssid) + '" data-secure="' + (n.secure ? 1 : 0) + '">' +
             bars(n.signal) + '<span class="pi-name">' + esc(n.ssid) + '</span>' +
             (n.secure ? '<span class="pi-lock" data-icon="lock"></span>' : '') +
             (n.active ? '<span class="pi-check" data-icon="check"></span>' : '') + '</button>';
         }).join('') : '<div class="pop-empty">No networks found</div>';
+        list.scrollTop = keepScroll;
         hydrate(list);
       });
     });
@@ -87,7 +89,9 @@
           connecting = ssid;
           $('[data-wifi-ssid]', el).textContent = ssid;
           $('[data-wifi-connect]', el).classList.remove('hidden');
-          var p = $('[data-wifi-pass]', el); p.value = ''; setTimeout(function () { p.focus(); }, 50);
+          var p = $('[data-wifi-pass]', el); p.value = '';
+          var jb0 = $('[data-wifi-join]', el); if (jb0) jb0.disabled = false;
+          setTimeout(function () { p.focus(); }, 50);
         } else {
           API.sys('wifi_connect', { ssid: ssid, password: '' });
           toast('Connecting to ' + ssid + '…');
@@ -95,13 +99,25 @@
         return;
       }
       if (e.target.closest('[data-wifi-cancel]')) { $('[data-wifi-connect]', el).classList.add('hidden'); connecting = null; }
-      if (e.target.closest('[data-wifi-join]')) {
+      var join = e.target.closest('[data-wifi-join]');
+      if (join) {
+        if (!connecting) return;
+        join.disabled = true;
         var pass = $('[data-wifi-pass]', el).value;
         API.sys('wifi_connect', { ssid: connecting, password: pass });
         $('[data-wifi-connect]', el).classList.add('hidden');
         toast('Connecting to ' + connecting + '…');
         connecting = null;
-        setTimeout(function () { wifiRefresh(el); }, 3000);
+        setTimeout(function () { join.disabled = false; wifiRefresh(el); }, 3000);
+      }
+    });
+    el.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' && e.target.matches('[data-wifi-pass]')) {
+        var jb = $('[data-wifi-join]', el); if (jb && !jb.disabled) jb.click();
+      }
+      if (e.key === 'Escape') {
+        var pc = $('[data-wifi-connect]', el);
+        if (pc && !pc.classList.contains('hidden')) { pc.classList.add('hidden'); connecting = null; }
       }
     });
     timers.push(setInterval(function () {
@@ -118,17 +134,27 @@
       '<b data-volnum>—</b></div><div class="pop-hint" data-icon="info"> Real system volume (pactl / amixer)</div></div>';
   }
 
+  function paintMute(el, muted) {
+    var mb = $('[data-mute]', el); if (!mb) return;
+    mb.classList.toggle('muted', !!muted);
+    mb.title = muted ? 'Unmute' : 'Mute';
+    var ic = mb.querySelector('[data-icon]');
+    if (ic && global.Icon && Icon.svg) { ic.dataset.icon = muted ? 'volumeMute' : 'volume'; ic.innerHTML = Icon.svg(ic.dataset.icon, 18); }
+  }
   function wireAudio(el) {
     var slider = $('[data-vol]', el);
-    API.sys('volume_get').then(function (r) {
-      if (r && r.ok) {
-        slider.value = Math.round(r.volume);
-        $('[data-volnum]', el).textContent = Math.round(r.volume) + '%';
-        $('[data-mute]', el).classList.toggle('muted', !!r.muted);
-      } else {
-        $('[data-volnum]', el).textContent = 'n/a';
-      }
-    });
+    function volGet() {
+      API.sys('volume_get').then(function (r) {
+        if (r && r.ok) {
+          slider.value = Math.round(r.volume);
+          var vn = $('[data-volnum]', el); if (vn) vn.textContent = Math.round(r.volume) + '%';
+          paintMute(el, r.muted);
+        } else {
+          var vn2 = $('[data-volnum]', el); if (vn2) vn2.textContent = 'n/a';
+        }
+      });
+    }
+    volGet();
     slider.addEventListener('input', function () {
       var n = Number(slider.value);
       $('[data-volnum]', el).textContent = n + '%';
@@ -139,6 +165,7 @@
       if (e.target.closest('[data-mute]')) {
         API.sys('mute_toggle');
         $('[data-mute]', el).classList.toggle('muted');
+        setTimeout(volGet, 600);
       }
     });
   }
@@ -154,10 +181,12 @@
   }
 
   function batteryRefresh(el) {
+    if (!el || !el.isConnected || !$('[data-batt-pct]', el)) return;
     API.getSystem().then(function (sys) {
+      if (!el.isConnected) return;
       var pct = Math.round((sys.battery_present ? sys.battery_level : 1) * 100);
-      $('[data-batt-pct]', el).textContent = sys.battery_present ? pct + '%' : 'AC';
-      $('[data-batt-state]', el).textContent = !sys.battery_present ? 'No battery — mains power'
+      var pe = $('[data-batt-pct]', el); if (pe) pe.textContent = sys.battery_present ? pct + '%' : 'AC';
+      var se = $('[data-batt-state]', el); if (se) se.textContent = !sys.battery_present ? 'No battery — mains power'
         : (sys.battery_charging ? 'Charging' : 'On battery power');
       var icon = $('[data-batt-icon]', el);
       if (icon) {
@@ -166,9 +195,9 @@
     });
     var s = state();
     if (s) {
-      $('[data-bright]', el).value = Math.round(s.brightness * 100);
-      $('[data-brightnum]', el).textContent = Math.round(s.brightness * 100) + '%';
-      $('[data-night-sw]', el).classList.toggle('on', !!s.toggles.night_light);
+      var br = $('[data-bright]', el); if (br) br.value = Math.round(s.brightness * 100);
+      var bn = $('[data-brightnum]', el); if (bn) bn.textContent = Math.round(s.brightness * 100) + '%';
+      var ns = $('[data-night-sw]', el); if (ns) ns.classList.toggle('on', !!s.toggles.night_light);
     }
   }
 
@@ -189,7 +218,7 @@
       }
     });
     batteryRefresh(el);
-    timers.push(setInterval(function () { batteryRefresh(el); }, 15000));
+    timers.push(setInterval(function () { if (el.offsetParent !== null || isWindowMode()) batteryRefresh(el); }, 15000));
   }
 
   // ------------------------------------------------------------- power
@@ -198,6 +227,7 @@
       '<div class="pop-pad">' +
       '<button class="pop-item" data-p="lock"><span class="ph-icon" data-icon="lock"></span><span class="pi-name">Lock screen</span></button>' +
       '<button class="pop-item" data-p="logout"><span class="ph-icon" data-icon="logout"></span><span class="pi-name">Log out</span></button>' +
+      '<button class="pop-item" data-p="suspend"><span class="ph-icon" data-icon="moon"></span><span class="pi-name">Suspend</span></button>' +
       '<button class="pop-item" data-p="reboot"><span class="ph-icon" data-icon="refresh"></span><span class="pi-name">Restart</span></button>' +
       '<button class="pop-item danger" data-p="shutdown"><span class="ph-icon" data-icon="power"></span><span class="pi-name">Shut down</span></button>' +
       '</div>';
@@ -207,9 +237,9 @@
     el.addEventListener('click', function (e) {
       var b = e.target.closest('[data-p]');
       if (!b) return;
-      selfClose();
       var s = shell();
       if (s) s.power(b.dataset.p);
+      setTimeout(selfClose, 400);
     });
   }
 
@@ -295,6 +325,7 @@
 
   function wireSettings(el) {
     var current = 'appearance';
+    var brightDeb = 0;
     el.addEventListener('click', function (e) {
       if (e.target.closest('[data-sw-close]')) {
         if (isWindowMode()) selfClose();
@@ -305,11 +336,11 @@
       if (nav) { current = nav.dataset.page; renderSettingsPage(el, current); return; }
       var s = state() || {};
       var t = e.target.closest('[data-theme]');
-      if (t) { dispatch({ type: 'set_theme', value: t.dataset.theme }); API.action({ type: 'set_theme', value: t.dataset.theme }); renderSettingsPage(el, current); return; }
+      if (t) { dispatch({ type: 'set_theme', value: t.dataset.theme }); renderSettingsPage(el, current); return; }
       var a = e.target.closest('[data-accent]');
-      if (a) { dispatch({ type: 'set_accent', value: a.dataset.accent }); API.action({ type: 'set_accent', value: a.dataset.accent }); renderSettingsPage(el, current); return; }
+      if (a) { dispatch({ type: 'set_accent', value: a.dataset.accent }); renderSettingsPage(el, current); return; }
       var w = e.target.closest('[data-wall]');
-      if (w) { dispatch({ type: 'set_wallpaper', value: w.dataset.wall }); API.action({ type: 'set_wallpaper', value: w.dataset.wall }); renderSettingsPage(el, current); return; }
+      if (w) { dispatch({ type: 'set_wallpaper', value: w.dataset.wall }); renderSettingsPage(el, current); return; }
       var r = e.target.closest('[data-res]');
       if (r) { API.sys('res_set', { mode: r.dataset.res }); toast('Switching to ' + r.dataset.res + '…'); setTimeout(function () { renderSettingsPage(el, current); }, 2500); return; }
     });
@@ -318,13 +349,13 @@
         var v = Number(e.target.value);
         var n = $('[data-scale-num]', el); if (n) n.textContent = v + '%';
         dispatch({ type: 'set_scale', value: v / 100 });
-        API.action({ type: 'set_scale', value: v / 100 });
       }
       if (e.target.matches('[data-bright]')) {
         var b = Number(e.target.value);
         var bn = $('[data-brightnum]', el); if (bn) bn.textContent = b + '%';
         dispatch({ type: 'set_brightness', value: b / 100 });
-        API.sys('brightness_set', { n: b });
+        clearTimeout(brightDeb);
+        brightDeb = setTimeout(function () { API.sys('brightness_set', { n: b }); }, 250);
       }
     });
     renderSettingsPage(el, current);

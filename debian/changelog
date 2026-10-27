@@ -1,3 +1,29 @@
+debian-minerva (0.5.5) unstable; urgency=medium
+
+  * 100-fix pass across the shell: bugfixes + one animation language
+    (full numbered list in docs/FIXES-0.5.5.md). Highlights:
+      - session polling no longer wipes the live EWMH window mirror
+        (dock running indicators flickered every 2.5 s);
+      - panel windows no longer consume the desktop's event queue;
+      - west-edge window resize moves the left edge (was stretching
+        the wrong way); drags stay on-screen; z-index rebase;
+      - Quick Settings reachable again (power button opens it, its
+        header button opens the power menu);
+      - fabricated data removed: Task Manager CPU/RAM columns are now
+        real load/memory, Displays reads real xrandr modes, the demo
+        Mail inbox and the do-nothing Widgets picker are gone, icon
+        artwork drops the Google brand palette, calendar art shows the
+        real date;
+      - battery pill reflects charge level (amber/red, AC on desktops
+        without a battery) and refreshes from the daemon every minute;
+      - API client: no leaked abort timers, empty-body safe, token on
+        probe, 3-strike backend downgrade instead of one hiccup;
+      - transitions/press feedback unified on every interactive
+        surface; will-change scoped down; dead boot/setup/weather CSS
+        removed; layers clear the 56 px dock.
+
+ -- Minerva Team <minerva@localhost>  Mon, 27 Oct 2026 23:05:00 +0700
+
 debian-minerva (0.5.4) unstable; urgency=medium
 
   * Accuracy pass measured against the Aluminium OS reference frames
