@@ -832,3 +832,107 @@ body.wallpaper-light .wallpaper::after {
 /* accessibility & selection */
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 ::selection { background: var(--accent); color: #fff; }
+
+/* =====================================================================
+   v0.5.4 ACCURACY PASS — measured against references/aluminium-os:
+   07-home-screen-dark, 05-home-screen-app-drawer, 08-quick-settings.
+   ===================================================================== */
+
+/* --- dock: always a light bar, both themes (reference dark home shows a
+       white full-width dock with centred colourful icons) --------------- */
+.dock {
+  background: rgba(248, 249, 252, .94);
+  border-top: 1px solid rgba(20, 24, 40, .10);
+  backdrop-filter: blur(20px) saturate(1.4);
+}
+.dock-item { color: #3d4350; }
+.dock-item:hover { background: rgba(40, 48, 70, .10); box-shadow: 0 6px 14px rgba(20, 24, 40, .16); }
+.dock-item.active { background: rgba(40, 48, 70, .12); box-shadow: inset 0 0 0 1.5px var(--accent); }
+.dock-sep { background: rgba(20, 24, 40, .18); }
+
+/* --- status bar: clock+date only on the left; green battery pill ------- */
+#sb-clock { font-size: 12px; }
+#sb-batt-num {
+  background: #16a34a; color: #fff; border-radius: 999px;
+  padding: 2px 7px; font-size: 10px; font-weight: 700; letter-spacing: .02em;
+}
+
+/* --- desktop: plain small date text, always-light search pill ---------- */
+.desktop-widget { left: 40px; top: 56px; }
+.dw-date { font-size: 13px; font-weight: 600; letter-spacing: 0; }
+.desktop-search, body.theme-dark .desktop-search {
+  background: rgba(244, 246, 250, .88); color: #4b505c;
+  backdrop-filter: blur(12px);
+}
+.desktop-search svg { stroke: #5a5f6b; }
+.desktop-icon .di-glyph {
+  width: 46px; height: 46px; border-radius: 50%;
+  background: rgba(255, 255, 255, .94);
+  box-shadow: 0 3px 10px rgba(10, 12, 24, .35);
+  backdrop-filter: none;
+}
+.desktop-icon .di-glyph svg { width: 26px; height: 26px; }
+.desktop-icon { font-size: 11px; }
+
+/* --- launcher: centred portrait sheet, lavender in dark mode ----------- */
+.launcher, body.theme-dark .launcher {
+  width: min(520px, 92vw);
+  max-height: min(780px, 86vh);
+  top: 46%;
+  border-radius: 28px;
+  background: rgba(188, 194, 214, .96);
+  color: #22262f;
+  border-color: rgba(255, 255, 255, .45);
+  backdrop-filter: blur(26px) saturate(1.3);
+}
+body.theme-light .launcher { background: rgba(236, 238, 244, .97); }
+.launcher::before {
+  content: ""; position: absolute; top: 10px; left: 50%; transform: translateX(-50%);
+  width: 44px; height: 4px; border-radius: 4px; background: rgba(20, 24, 40, .28);
+}
+.launcher-search, body.theme-dark .launcher-search {
+  margin: 26px 18px 6px; background: rgba(255, 255, 255, .85); color: #5a5f6b;
+}
+.launcher-search svg { stroke: #5a5f6b; }
+#launcher-title, .launcher-section-title {
+  text-align: center; text-transform: none; letter-spacing: 0;
+  font-size: 11.5px; font-weight: 600; color: #565b68; padding: 10px 0 2px;
+}
+#launcher-count { display: none; }
+.launcher-grid { gap: 14px 8px; padding: 10px 26px 22px; }
+.launcher-app { color: #22262f; font-size: 10.5px; }
+.launcher-app:hover { background: rgba(255, 255, 255, .5); }
+.launcher-app .la-glyph {
+  width: 46px; height: 46px; border-radius: 50%; background: #fff;
+  display: grid; place-items: center; box-shadow: 0 2px 8px rgba(20, 24, 40, .18);
+}
+.launcher-app .la-glyph svg, .launcher-app .la-glyph img { width: 30px; height: 30px; }
+.launcher-app .la-letter { width: 30px; height: 30px; border-radius: 50%; background: var(--accent); color: #fff; display: grid; place-items: center; font-size: 13px; font-weight: 700; }
+
+/* --- popovers / QS / notifications: lavender cards in dark mode -------- */
+body.theme-dark .pop, body.theme-dark .qs-panel, body.theme-dark .notif-panel,
+body.theme-dark .context-menu {
+  background: rgba(196, 202, 221, .96); color: #20242e;
+  border-color: rgba(255, 255, 255, .45);
+}
+body.theme-dark .qs-tile { background: rgba(255, 255, 255, .8); color: #20242e; }
+body.theme-dark .qs-tile.on { background: var(--accent); color: #fff; }
+body.theme-dark .qs-tile .qt-icon { background: rgba(20, 24, 40, .08); }
+body.theme-dark .qs-tile.on .qt-icon { background: rgba(255, 255, 255, .22); }
+body.theme-dark .pop-item { color: #20242e; }
+body.theme-dark .pop-item:hover { background: rgba(255, 255, 255, .65); }
+body.theme-dark .pop-empty, body.theme-dark .pop-item small,
+body.theme-dark .pop-head small, body.theme-dark .notif-card small { color: #565b68; }
+body.theme-dark .pop input[type=password], body.theme-dark .pop input[type=text] {
+  background: rgba(255, 255, 255, .85); color: #20242e;
+}
+body.theme-dark .notif-card { background: rgba(255, 255, 255, .82); color: #20242e; }
+body.theme-dark .context-menu .ctx-item { color: #20242e; }
+body.theme-dark .context-menu .ctx-item:hover { background: rgba(255, 255, 255, .65); }
+body.theme-dark .switch { background: rgba(20, 24, 40, .3); }
+body.theme-dark .switch.on { background: var(--accent); }
+body.theme-dark .pop input[type=range], body.theme-dark .qs-panel input[type=range] {
+  background: rgba(20, 24, 40, .16);
+}
+body.theme-dark .text-btn { color: #3d4350; }
+.launcher-footer { display: none; }
