@@ -37,6 +37,7 @@ WATCH_PID=""
 SHELL_PID=""
 WM_PID=""
 AUTOSTART_PIDS=""
+ENFORCE_PID=""
 PIDFILE="$STATE/sessiond.pid"
 SHELL_PROFILE="$RT/shell-$$"
 
@@ -70,6 +71,7 @@ cleanup() {
   [ -n "$WATCH_PID" ] && kill "$WATCH_PID" 2>/dev/null
   [ -n "$SHELL_PID" ] && kill "$SHELL_PID" 2>/dev/null
   [ -n "$WM_PID" ] && kill "$WM_PID" 2>/dev/null
+  [ -n "$ENFORCE_PID" ] && kill "$ENFORCE_PID" 2>/dev/null
   for p in $AUTOSTART_PIDS; do kill "$p" 2>/dev/null; done
   pkill -f "user-data-dir=$RT/shell-" 2>/dev/null
   pkill -f "user-data-dir=$RT/panels" 2>/dev/null
@@ -121,7 +123,7 @@ write_openbox_config() {
 <!-- minerva-generated: rewritten at every login by /usr/bin/minerva-session -->
 <openbox_config xmlns="http://openbox.org/3.4/rc">
   <resistance><strength>10</strength><screen_edge_strength>20</screen_edge_strength></resistance>
-  <focus><focusNew>yes</focusNew><followMouse>no</followMouse><focusLast>yes</focusLast><raiseOnFocus>no</raiseOnFocus></focus>
+  <focus><focusNew>yes</focusNew><followMouse>no</followMouse><focusLast>yes</focusLast><raiseOnFocus>yes</raiseOnFocus></focus>
   <theme><name>Minerva</name><titleLayout>C</titleLayout><keepBorder>yes</keepBorder><hideDisabled>no</hideDisabled><animateIconify>no</animateIconify></theme>
   <desktops><number>4</number><firstdesk>1</firstdesk><names><name>1</name><name>2</name><name>3</name><name>4</name></names></desktops>
   <resize><popupShow>Nonpixel</popupShow><popupPosition>Center</popupPosition></resize>
@@ -261,6 +263,26 @@ autostart_services() {
   done
 }
 
+# Keeps the fullscreen shell surface pinned no matter what any client does:
+# below every app window, fullscreen, out of taskbar/pager. Re-applied every
+# few seconds via EWMH so a missed WM rule or a chromium quirk can never
+# unpin it. This is the belt-and-braces the earlier releases were missing.
+enforce_shell_surface() {
+  command -v wmctrl >/dev/null 2>&1 || { log "enforcer: wmctrl missing, skipped"; return 0; }
+  command -v xprop >/dev/null 2>&1 || { log "enforcer: xprop missing, skipped"; return 0; }
+  sleep 2
+  while :; do
+    for id in $(xprop -root _NET_CLIENT_LIST 2>/dev/null | tr ',' '\n' | sed -n 's/.*#\([0-9a-fA-F]*\).*/\1/p'); do
+      t="$(xprop -id 0x$id _NET_WM_NAME 2>/dev/null | sed -n 's/.*"\(.*\)".*/\1/p' | head -1)"
+      if [ "$t" = "Minerva" ]; then
+        wmctrl -i -r 0x$id -b add,below,skip_taskbar,skip_pager 2>/dev/null
+        wmctrl -i -r 0x$id -b add,fullscreen 2>/dev/null
+      fi
+    done
+    sleep 3
+  done
+}
+
 # ------------------------------------------------------------------- daemon
 start_daemon
 watch_daemon() {
@@ -326,6 +348,9 @@ if [ "$MULTIWIN" = yes ]; then
   log "openbox pid=$WM_PID"
   autostart_services
   shell_window
+  enforce_shell_surface &
+  ENFORCE_PID=$!
+  log "shell-surface enforcer pid=$ENFORCE_PID"
 else
   MINERVA_SESSION_MODE=kiosk
   export MINERVA_SESSION_MODE MINERVA_BROWSER="$BROWSER" MINERVA_SESSION_PID=$$
