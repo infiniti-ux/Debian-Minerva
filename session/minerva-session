@@ -1,0 +1,156 @@
+#!/bin/sh
+# ===========================================================================
+# Debian Minerva — display-manager session entry.
+#
+# Selected as "Minerva" on the login screen (GDM / LightDM / SDDM), this
+# script owns the whole desktop lifetime:
+#
+#   1. spawns the Rust session daemon (minerva-sessiond) on loopback with a
+#      per-session token and supervises it (auto-restart on crash),
+#   2. picks a kiosk runtime: X11 display → browser kiosk on $DISPLAY,
+#      Wayland → `cage` (fallback `weston`) wrapping the same kiosk browser,
+#   3. tears everything down when the shell exits (logout / crash).
+#
+# Nothing here needs the network: the shell is served by the daemon itself.
+# ===========================================================================
+set -u
+
+PORT="${MINERVA_PORT:-47801}"
+BIND="127.0.0.1"
+DAEMON="${MINERVA_DAEMON:-/usr/bin/minerva-sessiond}"
+WEBROOT="${MINERVA_WEBROOT:-/usr/share/minerva/web}"
+
+STATE="${XDG_STATE_HOME:-$HOME/.local/state}/minerva"
+mkdir -p "$STATE" 2>/dev/null || STATE="/tmp/minerva-$USER"
+mkdir -p "$STATE"
+LOG="$STATE/session.log"
+
+TOKEN="$(cat /proc/sys/kernel/random/uuid 2>/dev/null || echo "minerva-$$-$(date +%s)")"
+URL="http://$BIND:$PORT/?token=$TOKEN"
+
+DAEMON_PID=""
+WATCH_PID=""
+SHELL_PID=""
+
+log() { echo "[minerva-session] $*" >>"$LOG"; }
+
+PIDFILE="$STATE/sessiond.pid"
+
+start_daemon() {
+  "$DAEMON" --port "$PORT" --bind "$BIND" --token "$TOKEN" --web-root "$WEBROOT" \
+    >>"$LOG" 2>&1 &
+  DAEMON_PID=$!
+  echo "$DAEMON_PID" >"$PIDFILE"
+  log "daemon started pid=$DAEMON_PID port=$PORT"
+}
+
+stop_daemon() {
+  # The watchdog restarts the daemon from a subshell, so the authoritative pid
+  # lives in $PIDFILE — kill whatever is recorded there, then the local one.
+  if [ -f "$PIDFILE" ]; then
+    kill "$(cat "$PIDFILE" 2>/dev/null)" 2>/dev/null
+    rm -f "$PIDFILE"
+  fi
+  [ -n "$DAEMON_PID" ] && kill "$DAEMON_PID" 2>/dev/null
+  DAEMON_PID=""
+}
+
+cleanup() {
+  log "session ending"
+  [ -n "$WATCH_PID" ] && kill "$WATCH_PID" 2>/dev/null
+  [ -n "$SHELL_PID" ] && kill "$SHELL_PID" 2>/dev/null
+  stop_daemon
+}
+trap cleanup EXIT INT TERM
+
+# --- 1. daemon + supervisor -------------------------------------------------
+start_daemon
+
+watch_daemon() {
+  while :; do
+    pid="$(cat "$PIDFILE" 2>/dev/null || true)"
+    if [ -n "$pid" ] && ! kill -0 "$pid" 2>/dev/null; then
+      log "daemon died — restarting"
+      start_daemon
+    fi
+    sleep 2
+  done
+}
+watch_daemon &
+WATCH_PID=$!
+
+# readiness probe (max ~10 s)
+i=0
+while [ "$i" -lt 50 ]; do
+  if command -v curl >/dev/null 2>&1; then
+    curl -fsS -o /dev/null "http://$BIND:$PORT/api/v1/health" 2>/dev/null && break
+  else
+    # no curl: give the daemon a fixed grace period instead
+    [ "$i" -ge 10 ] && break
+  fi
+  i=$((i + 1))
+  sleep 0.2
+done
+[ "$i" -lt 50 ] || log "warning: daemon not healthy after 10 s"
+
+# --- 2. kiosk runtime -------------------------------------------------------
+pick_browser() {
+  if [ -n "${MINERVA_BROWSER:-}" ] && command -v "$MINERVA_BROWSER" >/dev/null 2>&1; then
+    echo "$MINERVA_BROWSER"
+    return 0
+  fi
+  for b in chromium chromium-browser firefox-esr firefox epiphany-browser; do
+    command -v "$b" >/dev/null 2>&1 && { echo "$b"; return 0; }
+  done
+  echo ""
+}
+
+kiosk_args() {
+  case "$1" in
+    chromium|chromium-browser)
+      echo "--kiosk --app=$URL --no-first-run --no-default-browser-check --disable-translate --password-store=basic" ;;
+    firefox-esr|firefox)
+      echo "--kiosk $URL" ;;
+    epiphany-browser)
+      echo "--application-mode $URL" ;;
+    *)
+      # custom runtime (MINERVA_BROWSER): just hand it the shell URL
+      echo "$URL" ;;
+  esac
+}
+
+BROWSER="$(pick_browser)"
+if [ -z "$BROWSER" ]; then
+  log "FATAL: no browser runtime found"
+  echo "Minerva: install a kiosk runtime first:  sudo apt install chromium cage" >&2
+  exit 1
+fi
+
+log "shell runtime: $BROWSER (${DISPLAY:+x11}${WAYLAND_DISPLAY:+wayland})"
+
+if [ -n "${DISPLAY:-}" ]; then
+  # X11: the display manager already owns the X server.
+  # shellcheck disable=SC2086
+  $BROWSER $(kiosk_args "$BROWSER") >>"$LOG" 2>&1 &
+  SHELL_PID=$!
+elif command -v cage >/dev/null 2>&1; then
+  # Wayland: cage is the kiosk compositor — Minerva becomes the compositor
+  # session itself, i.e. a real desktop environment, not a browser tab.
+  # shellcheck disable=SC2086
+  cage -- $BROWSER $(kiosk_args "$BROWSER") >>"$LOG" 2>&1 &
+  SHELL_PID=$!
+elif command -v weston >/dev/null 2>&1; then
+  # shellcheck disable=SC2086
+  weston --socket=minerva -- $BROWSER $(kiosk_args "$BROWSER") >>"$LOG" 2>&1 &
+  SHELL_PID=$!
+else
+  log "FATAL: no Wayland compositor (cage/weston) and no X display"
+  echo "Minerva: no compositor found. Install one:  sudo apt install cage" >&2
+  exit 1
+fi
+
+# --- 3. session lives as long as the shell ----------------------------------
+wait "$SHELL_PID"
+EXIT_CODE=$?
+log "shell exited code=$EXIT_CODE"
+exit "$EXIT_CODE"

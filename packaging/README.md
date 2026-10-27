@@ -1,14 +1,24 @@
-# Session integration
+# Packaging notes
 
-These files are a **skeleton** for Phase 3 (native compositor). Today the
-session daemon serves the shell over HTTP, so a display manager launches it and
-a kiosk-style browser renders the desktop:
+The installable package is built from `../debian/` (debhelper 13, native
+format 3.0). From the repo root:
 
+```bash
+make deb        # dpkg-buildpackage -us -uc -b  →  ../debian-minerva_0.2.0_<arch>.deb
+sudo apt install ../debian-minerva_0.2.0_*.deb
 ```
-minerva-sessiond --port 8080 --web-root /usr/share/debian-minerva/web
-chromium --kiosk --app=http://localhost:8080
-```
 
-Once `minerva-compositor` (Smithay) lands, `minerva.desktop` will point at the
-compositor binary directly and the HTTP bridge becomes an optional debug
-interface.
+What lands on the system:
+
+| Path | Purpose |
+|---|---|
+| `/usr/bin/minerva-sessiond` | Rust session daemon |
+| `/usr/bin/minerva-session` | DM session script (supervision + kiosk runtime) |
+| `/usr/share/minerva/web/` | Shell assets served by the daemon |
+| `/usr/share/wayland-sessions/minerva.desktop` | "Minerva" session entry (Wayland DMs) |
+| `/usr/share/xsessions/minerva.desktop` | "Minerva" session entry (X11 DMs) |
+| `/usr/lib/systemd/user/minerva-sessiond.service` | Optional headless dev unit |
+
+Runtime recommends (from `debian/control`): `cage` + `chromium`/`firefox-esr`;
+`weston` suggested as fallback. `make install` installs the same layout
+without building a package (PREFIX/DESTDIR honoured).

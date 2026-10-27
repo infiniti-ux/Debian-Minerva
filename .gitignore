@@ -9,3 +9,10 @@ node_modules/
 .DS_Store
 # Scratch image search results
 image-search/
+# Debian build artifacts
+/debian/debian-minerva/
+/debian/.debhelper/
+/debian/files
+/debian/*.substvars
+/debian/*.debhelper.log
+.cargo-dh/

@@ -13,7 +13,7 @@ desktops isolate the system layer from the renderer.
 │                      ▲  local mirror for instant interaction   │
 │                      ▼  actions + JSON snapshots               │
 ├───────────────────────────────────────────────────────────────┤
-│ /api/v1/* over HTTP (unix socket in production)                 │
+│ /api/v1/* over HTTP — loopback only, per-session token in production                 │
 ├───────────────────────────────────────────────────────────────┤
 │ minerva-sessiond — Rust, std only, no crates                   │
 │  ┌────────────┐ ┌────────────┐ ┌──────────┐ ┌─────────────┐ │
@@ -91,3 +91,24 @@ Play Store, Google Search bar, or Google account flows. Replacements:
 | Play Store | Software |
 | Google apps folder | Debian app grid |
 | Android setup wizard | Debian Minerva welcome wizard |
+
+## Session lifecycle (production)
+
+A display manager (GDM, LightDM, SDDM) starts the **Minerva** session from
+`/usr/share/{wayland-sessions,xsessions}/minerva.desktop`, whose `Exec` is
+`/usr/bin/minerva-session`:
+
+1. The script mints a per-session token and starts `minerva-sessiond` bound
+   to `127.0.0.1:47801`, serving `/usr/share/minerva/web`. A supervisor loop
+   restarts the daemon if it crashes.
+2. It waits for `/api/v1/health` (with the token) to answer, then launches the
+   shell full-screen: a kiosk browser under X11, otherwise **cage** (preferred
+   Wayland kiosk compositor), otherwise **weston**.
+3. The shell URL carries `?token=…`; `web/js/api.js` then sends it as
+   `X-Minerva-Token` on every API call. Without a valid token the daemon
+   answers `401` — the desktop can never be driven by other local processes.
+4. When the kiosk runtime exits, the script stops the daemon (persisting
+   `session.json` first) and the session ends, returning to the login screen.
+
+Logs live in `~/.local/state/minerva/session.log`; the systemd user unit
+`minerva-sessiond.service` offers the same daemon for headless development.

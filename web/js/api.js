@@ -20,8 +20,27 @@
     return c.signal;
   }
 
+  // Session token: the display-manager session mints one per login and hands
+  // it to the shell via the launch URL (?token=...). Without it we are in
+  // plain development mode and send nothing.
+  var SESSION_TOKEN = (function () {
+    try {
+      var q = new URLSearchParams(location.search).get('token');
+      if (q) return q;
+    } catch (e) {}
+    return window.MINERVA_TOKEN || '';
+  })();
+
+  function withToken(headers) {
+    var h = Object.assign({}, headers || {});
+    if (SESSION_TOKEN) h['X-Minerva-Token'] = SESSION_TOKEN;
+    return h;
+  }
+
   async function raw(path, options) {
-    var res = await fetch(path, Object.assign({ signal: timeout(5000) }, options || {}));
+    var opts = Object.assign({ signal: timeout(5000) }, options || {});
+    opts.headers = withToken(opts.headers);
+    var res = await fetch(path, opts);
     if (!res.ok) throw new Error('HTTP ' + res.status);
     return res.json();
   }

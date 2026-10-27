@@ -10,8 +10,20 @@ Homepage: https://github.com/infiniti-ux/Debian-Minerva
 Package: debian-minerva
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}
-Description: Rust desktop session for Debian
- Debian Minerva is a desktop environment with a Rust session daemon and a
- lightweight web-based shell. It provides virtual desktops, a dock, an app
- launcher, quick settings, notifications, a task manager and a set of built-in
- applications. The daemon has no external crate dependencies.
+Recommends: cage, chromium | firefox-esr
+Suggests: weston
+Description: Debian Minerva desktop environment (Rust session + shell)
+ Minerva is a desktop environment for Debian: a dependency-free Rust session
+ daemon owns the desktop state (windows, virtual desktops, notifications,
+ theming, virtual filesystem, terminal) and a kiosk shell renders it as a
+ full screen session.
+ .
+ Installing this package adds a "Minerva" entry to the display manager
+ (GDM, LightDM, SDDM). Selecting it at login starts the session: the daemon
+ is supervised on loopback with a per-session token and a kiosk compositor
+ (cage on Wayland, or the existing X display) shows the desktop.
+ .
+ Features: virtual desktops, dock, app launcher with 18 built-in apps,
+ quick settings, notification shade, window manager with edge snapping,
+ light/dark theming with 6 accents and 5 SVG wallpapers, and a Rust-backed
+ terminal. No Google services or branding.

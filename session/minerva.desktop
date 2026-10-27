@@ -1,0 +1,8 @@
+[Desktop Entry]
+Name=Minerva
+Comment=Debian Minerva — Rust desktop session
+Exec=/usr/bin/minerva-session
+TryExec=/usr/bin/minerva-session
+Type=Application
+DesktopNames=Minerva
+Keywords=desktop;de;minerva;rust;debian;
