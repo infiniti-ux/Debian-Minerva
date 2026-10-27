@@ -14,6 +14,7 @@
   // ------------------------------------------------------------------ Files
   V.files = function (ctx) {
     var path = '/';
+    var hist = [];
     var id = gid('files');
     return {
       html: '<div class="app"><div class="app-toolbar">' +
@@ -50,18 +51,19 @@
               var glyph = e.kind === 'dir' ? 'folder' : (['md', 'txt', 'json', 'rs', 'js', 'css', 'html'].indexOf(e.ext) !== -1 ? 'doc' : (['png', 'jpg', 'svg', 'webp'].indexOf(e.ext) !== -1 ? 'image' : 'file'));
               return '<button class="file-item" data-name="' + esc(e.name) + '" data-kind="' + e.kind + '">' +
                 '<span class="fi-glyph">' + I.svg(glyph, 26) + '</span><span>' + esc(e.name) + '</span>' +
-                '<small>' + (e.kind === 'dir' ? 'Folder' : (e.size < 1024 ? e.size + ' B' : Math.round(e.size / 1024) + ' KB')) + '</small></button>';
+                '<small>' + (e.kind === 'dir' ? 'Folder' : (typeof e.size === 'number' ? (e.size < 1024 ? e.size + ' B' : Math.round(e.size / 1024) + ' KB') : '')) + '</small></button>';
             }).join('') || '<p class="muted">This folder is empty.</p>';
             main.innerHTML = crumb + '<div class="file-grid">' + grid + '</div>';
             status.textContent = path + ' · ' + data.entries.length + ' items · ' + (ctx.api.backend === 'rust' ? 'Rust VFS' : 'browser VFS');
           });
         }
-        side.addEventListener('click', function (e) { var b = e.target.closest('[data-p]'); if (b) { path = b.dataset.p; render(); } });
+        function go(p) { if (p !== path) hist.push(path); path = p; render(); }
+        side.addEventListener('click', function (e) { var b = e.target.closest('[data-p]'); if (b) go(b.dataset.p); });
         main.addEventListener('click', function (e) {
           var b = e.target.closest('[data-p], [data-name]'); if (!b) return;
-          if (b.dataset.p) { path = b.dataset.p; render(); return; }
+          if (b.dataset.p) { go(b.dataset.p); return; }
           var full = (path === '/' ? '' : path) + '/' + b.dataset.name;
-          if (b.dataset.kind === 'dir') { path = full; render(); }
+          if (b.dataset.kind === 'dir') go(full);
           else { ctx.openEditor(full); }
         });
         main.addEventListener('dblclick', function (e) { e.preventDefault(); });
@@ -69,7 +71,8 @@
           var b = e.target.closest('[data-a]'); if (!b) return;
           var a = b.dataset.a;
           if (a === 'refresh') render();
-          if (a === 'back' || a === 'up') { path = path === '/' ? '/' : (path.substring(0, path.lastIndexOf('/')) || '/'); render(); }
+          if (a === 'back' && hist.length) { path = hist.pop(); render(); }
+          if (a === 'up') { path = path === '/' ? '/' : (path.substring(0, path.lastIndexOf('/')) || '/'); render(); }
           if (a === 'newfolder') {
             var name = prompt('New folder name:', 'New folder'); if (!name) return;
             ctx.api.fileOp('mkdir', (path === '/' ? '' : path) + '/' + name).then(render);
@@ -92,11 +95,13 @@
       html: '<div class="app"><div class="app-toolbar"><span style="font-size:12px;color:var(--text-muted)">minerva-sh — ' +
         (ctx.api.backend === 'rust' ? 'connected to Rust daemon' : 'browser preview') + '</span><span class="spacer"></span>' +
         '<button class="tb-btn" data-a="clear">' + I.svg('trash', 15) + ' Clear</button></div>' +
-        '<div class="terminal" id="' + id + '-out"><div class="term-line">Debian Minerva 0.1.0 · minerva-sh</div>' +
+        '<div class="terminal" id="' + id + '-out"><div class="term-line">Debian Minerva 0.5.5 · minerva-sh</div>' +
         '<div class="term-line muted">Type <b>help</b> for a list of commands.</div><br></div>' +
         '<div class="app-status">Tip: try <b>neofetch</b>, <b>open settings</b>, <b>theme light</b>, <b>wallpaper aurora</b></div></div>',
       init: function (body) {
         var out = body.querySelector('#' + id + '-out');
+        var curInput = null;
+        out.addEventListener('click', function (e) { if (!e.target.closest('input') && curInput) curInput.focus(); });
         function line(text, cls) {
           var d = document.createElement('div');
           d.className = 'term-line ' + (cls || '');
@@ -126,7 +131,7 @@
               e.preventDefault(); if (hidx < history.length) { hidx++; input.value = history[hidx] || ''; }
             }
           });
-          out.addEventListener('click', function (e) { if (!e.target.closest('input')) input.focus(); });
+          curInput = input;
           return input;
         }
         function ascii() {
@@ -136,7 +141,7 @@
             '      <span class="term-ascii"> / /\\ \\</span>       OS      : Debian Minerva',
             '     <span class="term-ascii">/ /  \\ \\</span>      Kernel  : 6.12.0-minerva',
             '    <span class="term-ascii">/_( )_  \\</span>     Shell   : minerva-sh (Rust)',
-            '   <span class="term-ascii">\\      /</span>       DE      : Minerva 0.1.0',
+            '   <span class="term-ascii">\\      /</span>       DE      : Minerva 0.5.5',
             '    <span class="term-ascii">\\____/</span>        Theme   : ' + esc(ctx.state.theme)
           ].join('\n');
         }
@@ -153,7 +158,7 @@
             }
             if (o) o.split('\n').forEach(function (l) { line(esc(l)); });
             if (res.events && res.events.length) ctx.handleEvents(res.events);
-            if (cmd.trim()) promptLine();
+            promptLine();
           });
         }
         body.querySelector('.app-toolbar').addEventListener('click', function (e) {
@@ -207,7 +212,7 @@
           } else if (current === 'system') {
             h = header('System', 'Session information and power controls.') +
               '<div class="settings-card"><h3>This session</h3><dl class="kv" id="' + id + '-kv">' +
-              '<dt>Desktop</dt><dd>Debian Minerva 0.1.0</dd><dt>Session</dt><dd>minerva (Rust)</dd>' +
+              '<dt>Desktop</dt><dd>Debian Minerva 0.5.5</dd><dt>Session</dt><dd>minerva (Rust)</dd>' +
               '<dt>Virtual desktops</dt><dd>' + s.workspaces.length + '</dd><dt>Open windows</dt><dd>' + s.windows.length + '</dd>' +
               '<dt>Backend</dt><dd>' + (ctx.api.backend === 'rust' ? 'minerva-sessiond (Rust)' : 'browser preview') + '</dd></dl></div>' +
               '<div class="settings-card"><h3>Danger zone</h3><div class="setting-row"><div class="sr-label"><strong>Reset session</strong><small>Close all windows and restore defaults</small></div><button class="danger-btn" data-reset>Reset</button></div></div>';
@@ -235,7 +240,7 @@
               }).join('') + '</ul></div>';
           } else if (current === 'about') {
             h = '<div class="about-hero"><img src="assets/logo.svg" alt=""><div><h1>Debian Minerva</h1>' +
-              '<p>A Rust-built desktop environment for Debian GNU/Linux.</p><p>Version 0.1.0 · MIT licensed</p></div></div>' +
+              '<p>A Rust-built desktop environment for Debian GNU/Linux.</p><p>Version 0.5.5 · MIT licensed</p></div></div>' +
               '<div class="settings-card"><h3>About this desktop</h3><p style="font-size:12.5px;line-height:1.7">' +
               'Debian Minerva is a desktop session with a Rust core: the window model, virtual desktops, ' +
               'notifications, settings and system services all live in <code>minerva-sessiond</code>. ' +
@@ -263,7 +268,6 @@
           if (b.dataset.ws !== undefined) ctx.dispatch({ type: 'switch_workspace', index: Number(b.dataset.ws) });
           if (b.dataset.addws !== undefined) ctx.dispatch({ type: 'add_workspace' });
           if (b.dataset.reset !== undefined) ctx.dispatch({ type: 'reset' });
-          setTimeout(render, 40);
         });
         main.addEventListener('input', function (e) {
           if (e.target.matches('[data-scale]')) ctx.dispatch({ type: 'set_scale', value: Number(e.target.value) / 100 });
@@ -321,7 +325,7 @@
         '<button class="tb-btn" data-a="refresh">' + I.svg('refresh', 15) + ' Refresh</button></div>' +
         '<div class="app-content"><div class="stat-cards" id="' + id + '-stats"></div>' +
         '<h3 style="font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--text-muted)">Running applications</h3>' +
-        '<table class="monitor-table"><thead><tr><th>PID</th><th>Application</th><th>State</th><th>CPU</th><th>Memory</th><th></th></tr></thead>' +
+        '<table class="monitor-table"><thead><tr><th>ID</th><th>Application</th><th>Desktop</th><th>State</th><th></th></tr></thead>' +
         '<tbody id="' + id + '-rows"></tbody></table></div>' +
         '<div class="app-status" id="' + id + '-status"></div></div>',
       init: function (body) {
@@ -330,16 +334,17 @@
         var status = body.querySelector('#' + id + '-status');
         function render() {
           var ws = ctx.state.windows;
-          rows.innerHTML = ws.map(function (w, i) {
-            var cpu = ((w.id * 7 + i * 13) % 240) / 10;
-            var mem = 48 + ((w.id * 31) % 420);
-            return '<tr><td>' + w.id + '</td><td>' + I.svg(ctx.appIcon(w.app), 14) + ' ' + esc(ctx.appName(w.app)) + '</td>' +
-              '<td>' + esc(w.state) + '</td><td>' + cpu.toFixed(1) + '%</td><td>' + mem + ' MB</td>' +
+          rows.innerHTML = ws.map(function (w) {
+            return '<tr><td>#' + w.id + '</td><td>' + I.svg(ctx.appIcon(w.app), 14) + ' ' + esc(ctx.appName(w.app)) + '</td>' +
+              '<td>' + esc((ctx.state.workspaces[w.workspace] || {}).name || ('Desktop ' + ((w.workspace || 0) + 1))) + '</td>' +
+              '<td>' + esc(w.state) + '</td>' +
               '<td><button class="danger-btn" data-kill="' + w.id + '">End task</button></td></tr>';
-          }).join('') || '<tr><td colspan="6" style="color:var(--text-muted);text-align:center;padding:26px">No applications running</td></tr>';
+          }).join('') || '<tr><td colspan="5" style="color:var(--text-muted);text-align:center;padding:26px">No applications running</td></tr>';
           ctx.api.getSystem().then(function (sys) {
-            stats.innerHTML = '<div class="stat-card"><small>CPU</small><strong>' + (sys.cpus || 4) + ' cores</strong><div class="bar"><span style="width:' + Math.min(96, 18 + ws.length * 9) + '%"></span></div></div>' +
-              '<div class="stat-card"><small>Memory</small><strong>' + Math.round(sys.mem_percent || 32) + '%</strong><div class="bar"><span style="width:' + (sys.mem_percent || 32) + '%"></span></div></div>' +
+            var load = parseFloat(String(sys.loadavg || '').split(' ')[0]) || 0;
+            var cpuPct = Math.min(100, Math.round(load / (sys.cpus || 4) * 100));
+            stats.innerHTML = '<div class="stat-card"><small>CPU · load ' + load.toFixed(2) + '</small><strong>' + (sys.cpus || 4) + ' cores</strong><div class="bar"><span style="width:' + cpuPct + '%"></span></div></div>' +
+              '<div class="stat-card"><small>Memory</small><strong>' + Math.round(sys.mem_used_mb || 0) + ' / ' + Math.round(sys.mem_total_mb || 0) + ' MB</strong><div class="bar"><span style="width:' + Math.round(sys.mem_percent || 0) + '%"></span></div></div>' +
               '<div class="stat-card"><small>Windows</small><strong>' + ws.length + '</strong></div>' +
               '<div class="stat-card"><small>Workspaces</small><strong>' + ctx.state.workspaces.length + '</strong></div>';
             status.textContent = sys.hostname + ' · ' + sys.kernel + ' · uptime ' + Math.floor((sys.uptime_secs || 0) / 60) + ' min · ' + (ctx.api.backend === 'rust' ? 'live /proc data' : 'preview data');
@@ -379,14 +384,14 @@
         body.querySelector('.calc-grid').addEventListener('click', function (e) {
           var k = e.target.closest('[data-k]'); if (!k) return;
           var c = k.dataset.k;
-          if (/[0-9]/.test(c)) cur = cur === '0' ? c : cur + c;
-          else if (c === '.') { if (cur.indexOf('.') === -1) cur += '.'; }
+          if (/[0-9]/.test(c)) cur = (cur === '0' || cur === 'Error') ? c : cur + c;
+          else if (c === '.') { if (cur === 'Error') cur = '0.'; else if (cur.indexOf('.') === -1) cur += '.'; }
           else if (c === 'C') { cur = '0'; prev = ''; op = ''; }
           else if (c === '⌫') cur = cur.length > 1 ? cur.slice(0, -1) : '0';
           else if (c === '±') cur = String(-parseFloat(cur));
           else if (c === '%') cur = String(parseFloat(cur) / 100);
-          else if (c === '=') { if (op) { cur = String(+calc().toFixed(8)); prev = ''; op = ''; } }
-          else { prev = cur; cur = '0'; op = c; }
+          else if (c === '=') { if (op) { var r = calc(); cur = isFinite(r) ? String(+r.toFixed(8)) : 'Error'; prev = ''; op = ''; } }
+          else { if (cur === 'Error') cur = '0'; prev = cur; cur = '0'; op = c; }
           show();
         });
       }
@@ -465,9 +470,10 @@
       init: function (body) {
         var area = body.querySelector('#' + id + '-area');
         try { area.value = localStorage.getItem('minerva.notes') || '# Notes\n\n'; } catch (e) { area.value = '# Notes\n\n'; }
-        function save() { try { localStorage.setItem('minerva.notes', area.value); } catch (e) {} body.querySelector('#' + id + '-stat').textContent = 'Saved · ' + new Date().toLocaleTimeString(); }
-        area.addEventListener('input', save);
-        body.querySelector('[data-a="save"]').addEventListener('click', function () { save(); ctx.toast('Note saved'); });
+        var deb = 0;
+        function saveNow() { clearTimeout(deb); try { localStorage.setItem('minerva.notes', area.value); } catch (e) {} body.querySelector('#' + id + '-stat').textContent = 'Saved · ' + new Date().toLocaleTimeString(); }
+        area.addEventListener('input', function () { clearTimeout(deb); deb = setTimeout(saveNow, 300); });
+        body.querySelector('[data-a="save"]').addEventListener('click', function () { saveNow(); ctx.toast('Note saved'); });
       }
     };
   };
@@ -565,7 +571,7 @@
              ['Terminal', 'Try `neofetch`, `apps`, `open settings`, `theme light`.'],
              ['Customise', 'Change wallpaper, accent and theme in Settings → Appearance.'],
              ['Files', 'Your home directory is served by the Rust session daemon.'],
-             ['About', 'Debian Minerva 0.5.4 — MIT licensed, no Google components.']].map(function (c) {
+             ['About', 'Debian Minerva 0.5.5 — MIT licensed, no Google components.']].map(function (c) {
               return '<div class="browser-card"><h3>' + c[0] + '</h3><p>' + c[1] + '</p></div>';
             }).join('') + '</div>';
           url.value = 'minerva://start';
@@ -580,22 +586,6 @@
     };
   };
 
-  // ------------------------------------------------------------ Mail / Music
-  V.mail = function (ctx) {
-    var msgs = [
-      ['Debian Minerva Team', 'Welcome to your new desktop', 'Thanks for trying Debian Minerva. This is a local demo inbox.'],
-      ['Rust Core', 'Session daemon online', 'minerva-sessiond is ready and serving the shell API.'],
-      ['System', 'Wallpapers updated', 'Five new SVG wallpapers are available in Settings.']
-    ];
-    return {
-      html: '<div class="app"><div class="app-toolbar"><strong style="font-size:12px">Mail</strong><span class="spacer"></span><span class="muted" style="font-size:11px">Local inbox</span></div>' +
-        '<div class="app-content list-view">' + msgs.map(function (m, i) {
-          return '<div class="list-row"><div class="lr-avatar">' + m[0][0] + '</div><div class="lr-body"><strong>' + esc(m[1]) + '</strong><p>' + esc(m[2]) + '</p></div><small>' + (i + 1) + 'h</small></div>';
-        }).join('') + '</div></div>',
-      init: function () {}
-    };
-  };
-
   V.music = function (ctx) {
     return {
       html: '<div class="app"><div class="app-toolbar"><strong style="font-size:12px">Music</strong></div>' +
@@ -607,10 +597,13 @@
         '<p class="muted" style="font-size:11px;margin-top:18px">Playback is a UI demo — no audio backend yet.</p></div></div>',
       init: function (body) {
         var playing = false;
+        var disc = body.querySelector('.music-disc');
+        disc.style.animation = 'bootspin 6s linear infinite';
+        disc.style.animationPlayState = 'paused';
         body.querySelector('[data-a="play"]').addEventListener('click', function (e) {
           playing = !playing;
           e.currentTarget.innerHTML = I.svg(playing ? 'pause' : 'play', 24);
-          body.querySelector('.music-disc').style.animation = playing ? 'bootspin 6s linear infinite' : 'none';
+          disc.style.animationPlayState = playing ? 'running' : 'paused';
         });
       }
     };
@@ -630,7 +623,7 @@
     return {
       html: '<div class="app"><div class="app-toolbar"><strong style="font-size:12px">Help & About</strong></div>' +
         '<div class="app-content"><div class="about-hero"><img src="assets/logo.svg" alt=""><div><h1>Debian Minerva</h1>' +
-        '<p>Version 0.1.0 · Rust desktop session</p></div></div>' +
+        '<p>Version 0.5.5 · Rust desktop session</p></div></div>' +
         '<div class="settings-card"><h3>What is this?</h3><p style="font-size:12.5px;line-height:1.7">' +
         'Debian Minerva is a prototype desktop environment for Debian GNU/Linux. ' +
         'Its system layer is written in Rust with no external crates; the UI shell is a lightweight web renderer.</p></div>' +
@@ -645,40 +638,30 @@
     };
   };
 
-  // --------------------------------------------------------------- Widgets
-  V.widgets = function (ctx) {
-    return {
-      html: '<div class="app"><div class="app-toolbar"><strong style="font-size:12px">Widgets</strong><span class="spacer"></span><span class="muted" style="font-size:11px">Desktop widget picker</span></div>' +
-        '<div class="app-content"><div class="tile-grid">' +
-        [['clock', 'Clock', 'Analog and digital time', 'clock'], ['calendar', 'Calendar', 'Month view', 'calendar'],
-         ['weather', 'Weather', 'Temperature and condition', 'sun'], ['search', 'Search bar', 'Quick app search', 'search'],
-         ['system', 'System info', 'CPU and memory', 'cpu'], ['notes', 'Sticky note', 'A quick scratchpad', 'note']].map(function (w) {
-          return '<div class="tile-card"><div class="tc-icon">' + I.svg(w[3], 22) + '</div><strong>' + w[1] + '</strong><p>' + w[2] + '</p>' +
-            '<button data-widget="' + w[0] + '">Add to desktop</button></div>';
-        }).join('') + '</div></div><div class="app-status">Widgets render on the desktop layer</div></div>',
-      init: function (body) {
-        body.addEventListener('click', function (e) {
-          var b = e.target.closest('[data-widget]'); if (!b) return;
-          ctx.toast('Widget added: ' + b.dataset.widget);
-          ctx.dispatch({ type: 'notify', app: 'system', icon: 'widgets', title: 'Widget added', body: b.dataset.widget + ' is now on your desktop.' });
-        });
-      }
-    };
-  };
-
   // --------------------------------------------------------------- Displays
   V.display = function (ctx) {
     return {
       html: '<div class="app"><div class="app-toolbar"><strong style="font-size:12px">Displays</strong></div>' +
         '<div class="app-content"><div class="settings-card"><h3>Screen</h3>' +
-        '<div style="background:linear-gradient(135deg,#1b2450,#4b1030);height:150px;border-radius:12px;display:grid;place-items:center;color:#fff;font-size:12px">Minerva Display · 1600 × 900</div>' +
-        '<div class="setting-row" style="margin-top:14px"><div class="sr-label"><strong>Resolution</strong><small>1600 × 900 (scaled)</small></div><span class="muted">Auto</span></div>' +
-        '<div class="setting-row"><div class="sr-label"><strong>Refresh rate</strong><small>60 Hz</small></div><span class="muted">Auto</span></div></div>' +
+        '<div class="setting-row"><div class="sr-label"><strong>Resolution</strong><small data-rescur>Reading xrandr…</small></div><span class="muted">Live</span></div>' +
+        '<div class="setting-row"><div class="sr-label"><strong>Session</strong><small data-ressess>—</small></div><span class="muted">X11</span></div></div>' +
         '<div class="settings-card"><h3>Virtual desktops</h3><p style="font-size:12.5px">You have ' + ctx.state.workspaces.length + ' workspaces. ' +
         'Open the Activities overview with Super + W to manage them.</p>' +
         '<button class="chip-btn" data-overview style="margin-top:12px">Open overview</button></div></div></div>',
       init: function (body) {
         body.addEventListener('click', function (e) { if (e.target.closest('[data-overview]')) ctx.dispatch({ type: 'overview', value: true }); });
+        var cur = body.querySelector('[data-rescur]');
+        var sess = body.querySelector('[data-ressess]');
+        if (sess) sess.textContent = ctx.api.sessionMode === 'x11' ? 'Openbox · real windows' : 'Single window';
+        ctx.api.sys('res_list').then(function (r) {
+          if (!cur) return;
+          if (r && r.available && (r.modes || []).length) {
+            var c = r.modes.filter(function (m) { return m.current; })[0] || r.modes[0];
+            cur.textContent = c.mode + ' · ' + r.modes.length + ' mode(s) reported by xrandr';
+          } else {
+            cur.textContent = 'xrandr not available — install x11-xserver-utils';
+          }
+        });
       }
     };
   };

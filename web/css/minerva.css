@@ -70,39 +70,10 @@ kbd {
 }
 .primary-btn:hover { filter: brightness(1.12); }
 
-/* ====================================================== boot */
-.boot {
-  position: fixed; inset: 0; z-index: 100; display: grid; place-items: center;
-  background: radial-gradient(circle at 50% 45%, #142045, #05070f 70%);
-  color: #eef2ff;
-}
-.boot-center { text-align: center; width: 340px; }
-.boot-logo { width: 92px; height: 92px; animation: bootspin 5s linear infinite; }
+/* boot splash removed — a real session starts straight on the desktop.
+   bootspin stays: the Music app disc reuses it. */
 @keyframes bootspin { to { transform: rotate(360deg); } }
-.boot-wordmark { font-size: 38px; font-weight: 600; letter-spacing: -.03em; margin-top: 14px; }
-.boot-sub { font-size: 12px; letter-spacing: .22em; text-transform: uppercase; color: #8f9dc4; margin-top: 6px; }
-.boot-progress { height: 3px; border-radius: 3px; background: rgba(255,255,255,.13); margin: 38px 0 12px; overflow: hidden; }
-.boot-progress span { display: block; height: 100%; width: 0; background: linear-gradient(90deg, #e0376b, #7aa2ff); transition: width .25s linear; }
-.boot-status { font-size: 12px; color: #8f9dc4; height: 18px; }
-.boot-footer { position: absolute; bottom: 26px; left: 32px; right: 32px; display: flex; justify-content: space-between; font-size: 11px; color: #6f7b9f; }
-.boot-footer .text-btn { color: #9aa8cf; }
 
-/* ====================================================== setup */
-.setup { position: fixed; inset: 0; z-index: 90; background: rgba(5,7,15,.92); display: grid; place-items: center; }
-.setup-card { width: min(880px, 92vw); height: min(520px, 88vh); display: grid; grid-template-columns: 320px 1fr; border-radius: 24px; overflow: hidden; box-shadow: var(--shadow); background: var(--panel); }
-.setup-side { background: linear-gradient(160deg, #1a2447, #4b1030); color: #fff; padding: 42px 32px; }
-.setup-side img { width: 58px; }
-.setup-side h2 { font-size: 30px; line-height: 1.15; margin: 32px 0 12px; }
-.setup-side p { color: #b9c4e8; font-size: 13px; }
-.setup-body { padding: 40px 38px; display: flex; flex-direction: column; }
-.setup-body h3 { margin: 0 0 6px; font-size: 24px; }
-.setup-options { display: flex; flex-direction: column; gap: 10px; margin-top: 24px; }
-.setup-opt { display: flex; align-items: center; gap: 12px; padding: 13px 16px; border-radius: 14px; background: var(--panel-2); border: 2px solid transparent; text-align: left; }
-.setup-opt:hover { border-color: var(--accent); }
-.setup-opt.selected { border-color: var(--accent); background: var(--accent-soft); }
-.setup-opt .flag { font-size: 20px; }
-.setup-opt small { display: block; color: var(--text-muted); }
-.setup-actions { margin-top: auto; display: flex; justify-content: space-between; align-items: center; }
 .shortcut-list { list-style: none; padding: 0; margin: 20px 0; }
 .shortcut-list li { display: flex; gap: 10px; align-items: center; padding: 9px 0; border-bottom: 1px solid var(--panel-border); font-size: 13px; }
 .shortcut-list li span { color: var(--text-muted); margin-left: auto; }
@@ -124,11 +95,9 @@ body.wallpaper-light .desktop-search { background: rgba(255,255,255,.78); }
 body.wallpaper-light .statusbar .sb-icon svg, body.wallpaper-light .statusbar .sb-item svg { stroke: #1b1b26; }
 .wallpaper::after { content: ""; position: absolute; inset: 0; background: linear-gradient(to bottom, rgba(0,0,0,.28), transparent 22%, transparent 78%, rgba(0,0,0,.18)); pointer-events: none; }
 
-.desktop-layer { position: absolute; inset: 40px 0 48px; }
+.desktop-layer { position: absolute; inset: 40px 0 56px; }
 .desktop-widget { position: absolute; left: 44px; top: 34px; color: #f2f4ff; text-shadow: 0 2px 12px rgba(0,0,0,.35); }
 .dw-date { font-size: 26px; font-weight: 600; letter-spacing: -.02em; }
-.dw-weather { font-size: 14px; opacity: .85; margin-top: 2px; }
-.dw-cond { margin-left: 6px; }
 .desktop-search {
   position: absolute; left: 50%; top: 66px; transform: translateX(-50%);
   width: min(560px, 52vw); height: 50px; border-radius: 999px;
@@ -138,7 +107,6 @@ body.wallpaper-light .statusbar .sb-icon svg, body.wallpaper-light .statusbar .s
 body.theme-dark .desktop-search { background: rgba(40, 44, 62, .92); }
 .desktop-search input { flex: 1; background: none; border: 0; outline: 0; font-size: 15px; color: inherit; user-select: text; }
 .ds-icon { opacity: .6; }
-.ds-mic, .ds-lens { opacity: .75; cursor: pointer; }
 .desktop-icons { position: absolute; left: 34px; top: 190px; display: flex; flex-direction: column; gap: 22px; }
 .desktop-icon { width: 84px; display: flex; flex-direction: column; align-items: center; gap: 7px; color: #f2f4ff; font-size: 12px; text-shadow: 0 1px 6px rgba(0,0,0,.6); cursor: pointer; border-radius: 12px; padding: 8px 4px; }
 .desktop-icon:hover, .desktop-icon.selected { background: rgba(255,255,255,.18); }
@@ -165,7 +133,6 @@ body.theme-dark .desktop-search { background: rgba(40, 44, 62, .92); }
 .sb-icon { padding: 0 7px; position: relative; }
 .sb-item svg, .sb-icon svg { width: 17px; height: 17px; stroke: #f2f4ff; }
 body.wallpaper-light .sb-item svg, body.wallpaper-light .sb-icon svg { stroke: #1b1b26; }
-.sb-label { font-weight: 600; }
 .sb-sep { opacity: .5; }
 .sb-text { font-size: 11px; font-weight: 600; letter-spacing: .04em; }
 #sb-batt-num { font-size: 11px; }
@@ -184,8 +151,6 @@ body.wallpaper-light .sb-item svg, body.wallpaper-light .sb-icon svg { stroke: #
 .dock-item.active { background: var(--accent-soft); }
 .dock-item svg { width: 23px; height: 23px; }
 .dock-sep { width: 1px; height: 24px; background: rgba(120,120,150,.28); margin: 0 8px; }
-.dock-tray { position: absolute; right: 16px; display: flex; gap: 12px; align-items: center; color: var(--dock-icon); font-size: 11.5px; }
-.dock-tray button { color: inherit; display: inline-flex; gap: 5px; align-items: center; }
 
 /* Display scale is applied to content surfaces, not the fixed shell chrome. */
 .app, .settings-main, .launcher, .notif-panel, .qs-panel { zoom: var(--ui-scale, 1); }
@@ -256,7 +221,7 @@ input[type=range]::-moz-range-thumb { width: 18px; height: 18px; border: 0; bord
 .switch.on { background: var(--accent); }
 .switch.on span { left: 21px; }
 
-.calendar-pop { right: 60px; top: 46px; width: 320px; padding: 18px; }
+.calendar-pop { left: 14px; top: 46px; width: 320px; padding: 18px; }
 .cal-head { display: flex; justify-content: space-between; align-items: center; font-weight: 600; margin-bottom: 12px; }
 .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; text-align: center; font-size: 11.5px; }
 .cal-grid span { padding: 6px 0; border-radius: 8px; }
@@ -276,7 +241,7 @@ input[type=range]::-moz-range-thumb { width: 18px; height: 18px; border: 0; bord
 .ctx-sep { height: 1px; background: var(--panel-border); margin: 5px 4px; }
 
 /* ====================================================== windows */
-.windows { position: absolute; inset: 40px 0 48px; z-index: 20; pointer-events: none; }
+.windows { position: absolute; inset: 40px 0 56px; z-index: 20; pointer-events: none; }
 .win {
   position: absolute; pointer-events: auto; display: flex; flex-direction: column;
   background: var(--panel); color: var(--text); border: 1px solid var(--panel-border);
@@ -337,7 +302,7 @@ input[type=range]::-moz-range-thumb { width: 18px; height: 18px; border: 0; bord
 .sr-item:hover { background: var(--panel-2); }
 .sr-item svg { width: 20px; height: 20px; }
 .sr-item small { margin-left: auto; color: var(--text-faint); }
-.toasts { position: absolute; bottom: 66px; right: 18px; z-index: 70; display: flex; flex-direction: column; gap: 8px; align-items: flex-end; }
+.toasts { position: absolute; bottom: 74px; right: 18px; z-index: 70; display: flex; flex-direction: column; gap: 8px; align-items: flex-end; }
 .toast { background: var(--panel); color: var(--text); border: 1px solid var(--panel-border); border-radius: 12px; box-shadow: var(--shadow); padding: 11px 16px; font-size: 12.5px; animation: toastin .25s ease-out; }
 @keyframes toastin { from { opacity: 0; transform: translateX(20px); } }
 .snap-preview { position: absolute; z-index: 25; border: 2px solid var(--accent); background: var(--accent-soft); border-radius: 12px; pointer-events: none; }
@@ -529,10 +494,7 @@ body.wallpaper-light .statusbar .sb-icon svg.battery-svg { stroke: none; width: 
 #sb-batt-num { font-variant-numeric: tabular-nums; }
 
 /* ---- motion: panels, windows, launcher, dock ---- */
-.panel, .launcher, .overview, .context-menu, .search-results, .setup-card,
-.notif-card, .qs-tile, .win, .toast, .desktop-icon, .launcher-app, .ov-ws {
-  will-change: transform, opacity;
-}
+.win, .launcher, .panel { will-change: transform, opacity; }
 @keyframes mv-drop {
   from { opacity: 0; transform: translateY(-14px) scale(.96); }
   to   { opacity: 1; transform: translateY(0) scale(1); }
@@ -598,8 +560,6 @@ body.wallpaper-light .statusbar .sb-icon svg.battery-svg { stroke: none; width: 
 .wallpaper { transition: background-image var(--dur-slow) var(--ease-emph), filter var(--dur-slow) var(--ease-emph); }
 .ov-ws { transition: transform var(--dur) var(--ease-spring), border-color var(--dur), box-shadow var(--dur); }
 .ov-ws:hover { transform: translateY(-4px) scale(1.03); }
-.boot-progress span { transition: width var(--dur) var(--ease-emph); }
-.setup-step { animation: mv-fade var(--dur) var(--ease-emph) both; }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
@@ -936,3 +896,59 @@ body.theme-dark .pop input[type=range], body.theme-dark .qs-panel input[type=ran
 }
 body.theme-dark .text-btn { color: #3d4350; }
 .launcher-footer { display: none; }
+
+/* =====================================================================
+   v0.5.5 — 100-fix pass: one motion language on every surface,
+   honest battery pill, layout clearance for the 56px dock.
+   ===================================================================== */
+
+/* battery pill follows the real charge level (green is not always right) */
+#sb-batt-num.batt-low { background: #f59e0b; }
+#sb-batt-num.batt-crit { background: #ef4444; animation: dotpulse 1.6s ease-in-out infinite; }
+
+/* every interactive surface shares the same spring language */
+.desktop-icon { transition: transform var(--dur-fast) var(--ease-spring), background var(--dur-fast); }
+.ctx-item, .file-item, .sr-item, .list-row, .file-side-item, .sw-nav-item,
+.settings-side-item, .tb-btn, .text-btn, .chip-btn, .theme-chip, .danger-btn,
+.win-btn, .notif-card, .stat-card, .ov-win, .ov-ws-add, .sw-pkg button,
+.tile-card button {
+  transition: background var(--dur-fast) linear, color var(--dur-fast) linear,
+              filter var(--dur-fast) linear, transform var(--dur-fast) var(--ease-spring),
+              box-shadow var(--dur-fast), border-color var(--dur-fast);
+}
+.ctx-item:active, .pop-item:active, .qs-tile:active, .launcher-app:active,
+.tb-btn:active, .chip-btn:active, .file-item:active, .sr-item:active { transform: scale(.985); }
+.icon-btn { transition: background var(--dur-fast), transform var(--dur-fast) var(--ease-spring); }
+.icon-btn:active { transform: scale(.92); }
+.calc-key { transition: background var(--dur-fast), transform .1s var(--ease-spring); }
+.calc-key:active { transform: scale(.94); }
+.calc-key.eq:hover { filter: brightness(1.1); }
+.accent-chip, .wp-chip, .wp-card { transition: transform var(--dur-fast) var(--ease-spring), border-color var(--dur-fast); }
+.accent-chip:hover, .wp-chip:hover, .wp-card:hover { transform: translateY(-2px); }
+.tile-card { transition: transform var(--dur-fast) var(--ease-spring), box-shadow var(--dur-fast); }
+.tile-card:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(6, 8, 20, .18); }
+.tile-card button:hover, .sw-pkg button:hover, .danger-btn:hover { filter: brightness(1.08); }
+.ov-win:hover { transform: translateY(-2px); }
+.ov-ws-add:hover { transform: translateY(-3px); border-color: #e0376b; }
+
+/* dock running indicator springs in instead of popping */
+.dock-item.running::after { animation: mv-dash var(--dur) var(--ease-spring) both; }
+@keyframes mv-dash { from { transform: scaleX(0); opacity: 0; } to { transform: scaleX(1); opacity: 1; } }
+
+/* live bars animate instead of jumping between readings */
+.bar span { transition: width var(--dur-slow) var(--ease-emph); }
+.batt-mini i { transition: width var(--dur) var(--ease-emph), background var(--dur); }
+
+/* snap preview + lock screen fade in */
+.snap-preview:not(.hidden) { animation: mv-fade var(--dur-fast) ease-out both; }
+.lock-screen:not(.hidden) { animation: mv-fade var(--dur) var(--ease-emph) both; }
+
+/* settings window opens with the same centred-sheet motion as the launcher */
+.settings-win:not(.hidden) { animation: mv-sheet var(--dur) var(--ease-emph) both; }
+@keyframes mv-sheet {
+  from { opacity: 0; transform: translate(-50%, -48%) scale(.97); }
+  to   { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}
+
+/* disabled state for the Wi-Fi join button while connecting */
+.primary-btn:disabled { opacity: .55; pointer-events: none; }

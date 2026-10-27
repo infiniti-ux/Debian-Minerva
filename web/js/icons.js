@@ -37,6 +37,7 @@
     restore: '<rect x="7" y="7" width="12" height="12" rx="2"/><path d="M10 7V5h9v9h-2"/>',
     sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
     volume: '<path d="M4 9v6h4l5 4V5L8 9zM17 9a4 4 0 0 1 0 6M19.5 6.5a7.5 7.5 0 0 1 0 11"/>',
+    volumeMute: '<path d="M4 9v6h4l5 4V5L8 9z"/><path d="M17 9.5l5 5M22 9.5l-5 5"/>',
     bluetooth: '<path d="M7 7l10 10-5 4V3l5 4L7 17"/>',
     moon: '<path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5z"/>',
     plane: '<path d="M21 15.5 13.5 12V5.5a1.5 1.5 0 0 0-3 0V12L3 15.5V18l7.5-2v3.5L8.5 21v1l3.5-1 3.5 1v-1l-2-1.5V16L21 18z"/>',
@@ -115,9 +116,9 @@
    * Shapes follow the Aluminium OS leaks (multi-colour, squircle/circle) but
    * every glyph is neutral Debian Minerva artwork — no Google logos. */
   const ART_BG = {
-    files:'#1a73e8', browser:'#fff', terminal:'#20242c', editor:'#f9ab00',
-    settings:'#9334e6', software:'#0f9d58', monitor:'#00897b', calculator:'#5f6368',
-    clock:'#1a73e8', calendar:'#fff', notes:'#f9ab00', gallery:'#fff',
+    files:'#3b6fe0', browser:'#fff', terminal:'#20242c', editor:'#eda118',
+    settings:'#9334e6', software:'#2f9e63', monitor:'#00897b', calculator:'#5f6368',
+    clock:'#3b6fe0', calendar:'#fff', notes:'#eda118', gallery:'#fff',
     mail:'#fff', music:'#d81b60', camera:'#455a64', help:'#00838f',
     widgets:'#7b1fa2', display:'#3f51b5', system:'#a80030'
   };
@@ -129,42 +130,42 @@
     display:'monitor', system:'info'
   };
   const ART = {
-    browser: '<circle cx="24" cy="24" r="23" fill="#34a853"/>' +
-      '<path d="M24 24 L24 1 A23 23 0 0 1 43.9 35.5 Z" fill="#ea4335"/>' +
-      '<path d="M24 24 L43.9 35.5 A23 23 0 0 1 4.1 35.5 Z" fill="#fbbc04"/>' +
-      '<path d="M24 24 L4.1 35.5 A23 23 0 0 1 24 1 Z" fill="#4285f4"/>' +
-      '<circle cx="24" cy="24" r="10" fill="#fff"/><circle cx="24" cy="24" r="7.6" fill="#1a73e8"/>' +
+    browser: '<circle cx="24" cy="24" r="23" fill="#2fa36b"/>' +
+      '<path d="M24 24 L24 1 A23 23 0 0 1 43.9 35.5 Z" fill="#e05252"/>' +
+      '<path d="M24 24 L43.9 35.5 A23 23 0 0 1 4.1 35.5 Z" fill="#f0b429"/>' +
+      '<path d="M24 24 L4.1 35.5 A23 23 0 0 1 24 1 Z" fill="#3b6fe0"/>' +
+      '<circle cx="24" cy="24" r="10" fill="#fff"/><circle cx="24" cy="24" r="7.6" fill="#3b6fe0"/>' +
       '<path d="M16.6 24h14.8M24 16.6v14.8" stroke="#fff" stroke-width="1" opacity=".55"/>',
     gallery: '<circle cx="24" cy="24" r="23" fill="#f1f3f4"/>' +
-      '<path d="M23 4a20 20 0 0 1 20 20h-9A11 11 0 0 0 23 13z" fill="#fbbc04"/>' +
-      '<path d="M43 24a20 20 0 0 1-20 20v-9a11 11 0 0 0 11-11z" fill="#ea4335"/>' +
-      '<path d="M23 44A20 20 0 0 1 3 24h9a11 11 0 0 0 11 11z" fill="#34a853"/>' +
-      '<path d="M3 24A20 20 0 0 1 23 4v9A11 11 0 0 0 12 24z" fill="#4285f4"/>',
+      '<path d="M23 4a20 20 0 0 1 20 20h-9A11 11 0 0 0 23 13z" fill="#f0b429"/>' +
+      '<path d="M43 24a20 20 0 0 1-20 20v-9a11 11 0 0 0 11-11z" fill="#e05252"/>' +
+      '<path d="M23 44A20 20 0 0 1 3 24h9a11 11 0 0 0 11 11z" fill="#2fa36b"/>' +
+      '<path d="M3 24A20 20 0 0 1 23 4v9A11 11 0 0 0 12 24z" fill="#3b6fe0"/>',
     mail: '<rect x="2" y="9" width="44" height="30" rx="5" fill="#fff"/>' +
-      '<path d="M4 13l20 14 20-14" fill="none" stroke="#ea4335" stroke-width="6" stroke-linejoin="round" stroke-linecap="round"/>' +
-      '<path d="M4 35h40" stroke="#4285f4" stroke-width="4" stroke-linecap="round"/>' +
-      '<path d="M4 13v22M44 13v22" stroke="#34a853" stroke-width="3" stroke-linecap="round"/>',
+      '<path d="M4 13l20 14 20-14" fill="none" stroke="#e05252" stroke-width="6" stroke-linejoin="round" stroke-linecap="round"/>' +
+      '<path d="M4 35h40" stroke="#3b6fe0" stroke-width="4" stroke-linecap="round"/>' +
+      '<path d="M4 13v22M44 13v22" stroke="#2fa36b" stroke-width="3" stroke-linecap="round"/>',
     calendar: '<rect x="4" y="6" width="40" height="36" rx="5" fill="#fff"/>' +
-      '<path d="M4 11a5 5 0 0 1 5-5h30a5 5 0 0 1 5 5v6H4z" fill="#ea4335"/>' +
-      '<rect x="13" y="2" width="3.4" height="9" rx="1.7" fill="#c5221f"/>' +
-      '<rect x="32" y="2" width="3.4" height="9" rx="1.7" fill="#c5221f"/>' +
-      '<text x="24" y="35" text-anchor="middle" font-size="19" font-weight="700" fill="#3c4043" font-family="Arial,sans-serif">27</text>',
-    clock: '<circle cx="24" cy="24" r="22" fill="#1a73e8"/>' +
+      '<path d="M4 11a5 5 0 0 1 5-5h30a5 5 0 0 1 5 5v6H4z" fill="#e05252"/>' +
+      '<rect x="13" y="2" width="3.4" height="9" rx="1.7" fill="#b23b3b"/>' +
+      '<rect x="32" y="2" width="3.4" height="9" rx="1.7" fill="#b23b3b"/>' +
+      '<text x="24" y="35" text-anchor="middle" font-size="19" font-weight="700" fill="#3c4043" font-family="Arial,sans-serif">' + new Date().getDate() + '</text>',
+    clock: '<circle cx="24" cy="24" r="22" fill="#3b6fe0"/>' +
       '<circle cx="24" cy="24" r="17.5" fill="#fff"/>' +
-      '<path d="M24 13v11l8 5" stroke="#1a73e8" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>' +
-      '<circle cx="24" cy="24" r="2.6" fill="#ea4335"/>' +
-      '<path d="M24 8v3M40 24h-3M24 40v-3M8 24h3" stroke="#8ab4f8" stroke-width="2" stroke-linecap="round"/>',
+      '<path d="M24 13v11l8 5" stroke="#3b6fe0" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>' +
+      '<circle cx="24" cy="24" r="2.6" fill="#e05252"/>' +
+      '<path d="M24 8v3M40 24h-3M24 40v-3M8 24h3" stroke="#a9c4f5" stroke-width="2" stroke-linecap="round"/>',
     terminal: '<rect x="1" y="1" width="46" height="46" rx="23" fill="#20242c"/>' +
       '<path d="M11 18l7 6-7 6" stroke="#7fd1a6" stroke-width="3.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>' +
       '<path d="M23 31h12" stroke="#7fd1a6" stroke-width="3.2" stroke-linecap="round"/>' +
-      '<circle cx="10" cy="9" r="1.6" fill="#ea4335"/><circle cx="15" cy="9" r="1.6" fill="#fbbc04"/><circle cx="20" cy="9" r="1.6" fill="#34a853"/>',
-    files: '<circle cx="24" cy="24" r="23" fill="#1a73e8"/>' +
+      '<circle cx="10" cy="9" r="1.6" fill="#e05252"/><circle cx="15" cy="9" r="1.6" fill="#f0b429"/><circle cx="20" cy="9" r="1.6" fill="#2fa36b"/>',
+    files: '<circle cx="24" cy="24" r="23" fill="#3b6fe0"/>' +
       '<path d="M11 18a3 3 0 0 1 3-3h7l3 3h9a3 3 0 0 1 3 3v12a3 3 0 0 1-3 3H14a3 3 0 0 1-3-3z" fill="#fff"/>' +
-      '<path d="M11 25h26v8a3 3 0 0 1-3 3H14a3 3 0 0 1-3-3z" fill="#8ab4f8"/>',
-    editor: '<circle cx="24" cy="24" r="23" fill="#f9ab00"/>' +
+      '<path d="M11 25h26v8a3 3 0 0 1-3 3H14a3 3 0 0 1-3-3z" fill="#a9c4f5"/>',
+    editor: '<circle cx="24" cy="24" r="23" fill="#eda118"/>' +
       '<path d="M14 8h14l7 7v24a2 2 0 0 1-2 2H14a2 2 0 0 1-2-2V10a2 2 0 0 1 2-2z" fill="#fff"/>' +
-      '<path d="M28 8v7h7z" fill="#ffe0a3"/>' +
-      '<path d="M17 22h13M17 27h13M17 32h9" stroke="#f9ab00" stroke-width="2.2" stroke-linecap="round"/>',
+      '<path d="M28 8v7h7z" fill="#ffe6b8"/>' +
+      '<path d="M17 22h13M17 27h13M17 32h9" stroke="#eda118" stroke-width="2.2" stroke-linecap="round"/>',
     settings: '<circle cx="24" cy="24" r="23" fill="#9334e6"/>' +
       '<g fill="#fff"><circle cx="24" cy="24" r="13"/>' +
       '<rect x="21" y="5" width="6" height="12" rx="2"/>' +
@@ -179,11 +180,17 @@
   };
 
   /** Colourful app artwork. `id` is an app id from the catalogue. */
+  function hashColor(id) {
+    var h = 0, s = String(id || '');
+    for (var i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) % 360;
+    return 'hsl(' + h + ', 52%, 44%)';
+  }
+
   function appArt(id, size) {
     size = size || 40;
     var inner = ART[id];
     if (!inner) {
-      inner = '<circle cx="24" cy="24" r="23" fill="' + (ART_BG[id] || '#5f6368') + '"/>' +
+      inner = '<circle cx="24" cy="24" r="23" fill="' + (ART_BG[id] || hashColor(id)) + '"/>' +
         '<g transform="translate(5.2 5.2) scale(1.57)" fill="none" stroke="#fff" ' +
         'stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" opacity=".97">' +
         (P[APP_GLYPH[id]] || P.info) + '</g>';
