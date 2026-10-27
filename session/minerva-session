@@ -43,6 +43,7 @@ WATCH_PID=""
 SHELL_PID=""
 WM_PID=""
 PIDFILE="$STATE/sessiond.pid"
+SHELL_PROFILE="$RT/shell-$$"
 
 log() { echo "[minerva-session] $*" >>"$LOG"; }
 
@@ -80,6 +81,7 @@ cleanup() {
   [ -n "$WM_PID" ] && kill "$WM_PID" 2>/dev/null
   # on-demand panel windows live in their own chromium profile/process
   pkill -f "user-data-dir=$RT/panels" 2>/dev/null
+  rm -rf "$RT"/shell-* 2>/dev/null
   stop_daemon
   rm -f "$RT/session.env"
 }
@@ -304,9 +306,10 @@ app_window() { # role profile
     dock)    geo="--window-size=${SCREEN_W},${DOCK_H} --window-position=0,${DOCK_Y}" ;;
     *)       geo="" ;;
   esac
+  log "window $1 geo: ${geo:-default}"
   # shellcheck disable=SC2086
   "$BROWSER" --app="$URL#$1" --wm-class="minerva-$1" --class="minerva-$1" $geo \
-    --user-data-dir="$RT/$2" $CHROME_FLAGS >>"$LOG" 2>&1
+    --user-data-dir="$2" $CHROME_FLAGS >>"$LOG" 2>&1
 }
 
 if [ "$MULTIWIN" = yes ]; then
@@ -315,12 +318,20 @@ if [ "$MULTIWIN" = yes ]; then
   openbox --sm-disable >>"$LOG" 2>&1 &
   WM_PID=$!
   sleep 0.5
+  if ! kill -0 "$WM_PID" 2>/dev/null; then
+    log "FATAL?: openbox exited immediately - retrying once"
+    openbox --sm-disable >>"$LOG" 2>&1 &
+    WM_PID=$!
+    sleep 0.5
+    kill -0 "$WM_PID" 2>/dev/null || log "FATAL: openbox not running; windows will self-place"
+  fi
+  log "openbox pid=$WM_PID"
   # desktop surface: its chromium process hosts desktop+topbar+dock windows
-  app_window desktop shell &
+  app_window desktop "$SHELL_PROFILE" &
   SHELL_PID=$!
   sleep 2
-  app_window topbar shell || log "warning: topbar window failed"
-  app_window dock shell || log "warning: dock window failed"
+  app_window topbar "$SHELL_PROFILE" || log "warning: topbar window failed"
+  app_window dock "$SHELL_PROFILE" || log "warning: dock window failed"
 else
   log "session mode: kiosk single-window ($BROWSER)"
   case "$(basename "$BROWSER")" in
