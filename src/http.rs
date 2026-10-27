@@ -292,8 +292,8 @@ fn api(req: &Request, srv: &Server) -> Response {
             ("session_mode", Value::s(srv.exec.session_mode.clone())),
         ])),
         ("GET", "/api/v1/apps") => ok(Value::obj(vec![("apps", catalog_json())])),
-        ("GET", "/api/v1/desktop-apps") => srv.exec.desktop_apps(),
-        ("GET", "/api/v1/running") => srv.exec.running_json(),
+        ("GET", "/api/v1/desktop-apps") => ok(srv.exec.desktop_apps()),
+        ("GET", "/api/v1/running") => ok(srv.exec.running_json()),
         ("GET", "/api/v1/state") => {
             let state = srv.state.lock().unwrap();
             ok(state.snapshot())
@@ -350,24 +350,24 @@ fn api(req: &Request, srv: &Server) -> Response {
                 Err(e) => return err(format!("invalid JSON: {}", e)),
             };
             let sys = v.get("sys").as_str().to_string();
-            if !sys.is_empty() { return srv.exec.sys(&sys, &v); }
+            if !sys.is_empty() { return ok(srv.exec.sys(&sys, &v)); }
             let cmd = v.get("cmd").as_str().to_string();
-            if !cmd.is_empty() { return srv.exec.session_cmd(&cmd); }
-            if v.get("panel_close").as_bool() { return srv.exec.close_panels(); }
+            if !cmd.is_empty() { return ok(srv.exec.session_cmd(&cmd)); }
+            if v.get("panel_close").as_bool() { return ok(srv.exec.close_panels()); }
             let panel = v.get("panel").as_str().to_string();
-            if !panel.is_empty() { return srv.exec.open_panel(&panel); }
+            if !panel.is_empty() { return ok(srv.exec.open_panel(&panel)); }
             let fallback = v.get("app_fallback").as_str().to_string();
-            if !fallback.is_empty() { return srv.exec.push_pending(&fallback); }
-            if v.get("pending").as_str() == "take" { return srv.exec.take_pending(); }
+            if !fallback.is_empty() { return ok(srv.exec.push_pending(&fallback)); }
+            if v.get("pending").as_str() == "take" { return ok(srv.exec.take_pending()); }
             let desktop = v.get("desktop").as_str().to_string();
             let app = v.get("app").as_str().to_string();
             if !desktop.is_empty() {
                 let r = srv.exec.launch_desktop_app(&desktop);
-                if r.get("ok").as_bool() || app.is_empty() { return r; }
+                if r.get("ok").as_bool() || app.is_empty() { return ok(r); }
             }
             if !app.is_empty() {
                 let arg = v.get("arg").as_str().to_string();
-                return srv.exec.launch_app(&app, &arg);
+                return ok(srv.exec.launch_app(&app, &arg));
             }
             err("exec: nothing to do")
         }
