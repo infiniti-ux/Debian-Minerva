@@ -23,8 +23,11 @@ windows — with **all Google branding removed** and replaced by Debian Minerva.
 
 ### Desktop features
 
+- **Colourful adaptive app icons** — neutral Material-style artwork, no Google logos.
+- **Themed battery indicator** — real charge level from `/sys/class/power_supply`, follows the accent colour.
+- **Spring-smooth motion** — eased window/panel/launcher transitions with `prefers-reduced-motion` support.
 - **Top status bar** — clock/date, activity button, sync, location, screen
-  record, keyboard layout, assistant, notifications, Wi-Fi, battery, power.
+  record, keyboard layout, notifications, Wi-Fi, battery, power.
 - **Compact Quick Settings** — slides down from the top-right (brightness,
   volume, Wi-Fi, Bluetooth, DND, night light, airplane, sync, location, record).
 - **Notification shade** — cards, per-item dismiss, clear all, DND.

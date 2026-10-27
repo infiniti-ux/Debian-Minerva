@@ -23,7 +23,6 @@
     monitor: '<rect x="2.5" y="3.5" width="19" height="14" rx="2"/><path d="M8 21h8M12 17.5V21"/>',
     search: '<circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/>',
     mic: '<rect x="9" y="2.5" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21M8 21h8"/>',
-    sparkle: '<path d="M12 2.5l1.9 5.6 5.6 1.9-5.6 1.9L12 17.5l-1.9-5.6L4.5 10l5.6-1.9z"/><path d="M18.5 16l.8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8z"/>',
     grid: '<circle cx="5" cy="5" r="1.4"/><circle cx="12" cy="5" r="1.4"/><circle cx="19" cy="5" r="1.4"/><circle cx="5" cy="12" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="19" cy="12" r="1.4"/><circle cx="5" cy="19" r="1.4"/><circle cx="12" cy="19" r="1.4"/><circle cx="19" cy="19" r="1.4"/>',
     sync: '<path d="M20 11a8 8 0 0 0-14.3-4.5L4 8M4 4v4h4M4 13a8 8 0 0 0 14.3 4.5L20 16M20 20v-4h-4"/>',
     location: '<path d="M12 21s7-6.2 7-11a7 7 0 1 0-14 0c0 4.8 7 11 7 11z"/><circle cx="12" cy="10" r="2.5"/>',
@@ -110,5 +109,88 @@
     });
   }
 
-  global.Icon = { svg: svg, appTile: appTile, hydrate: hydrate, names: Object.keys(P) };
+
+  /* ---------------------------------------------------------------- app art
+   * Colourful adaptive artwork for the launcher / dock / desktop / windows.
+   * Shapes follow the Aluminium OS leaks (multi-colour, squircle/circle) but
+   * every glyph is neutral Debian Minerva artwork — no Google logos. */
+  const ART_BG = {
+    files:'#1a73e8', browser:'#fff', terminal:'#20242c', editor:'#f9ab00',
+    settings:'#9334e6', software:'#0f9d58', monitor:'#00897b', calculator:'#5f6368',
+    clock:'#1a73e8', calendar:'#fff', notes:'#f9ab00', gallery:'#fff',
+    mail:'#fff', music:'#d81b60', camera:'#455a64', help:'#00838f',
+    widgets:'#7b1fa2', display:'#3f51b5', system:'#a80030'
+  };
+  const APP_GLYPH = {
+    files:'folder', browser:'globe', terminal:'terminal', editor:'edit',
+    settings:'settings', software:'package', monitor:'activity', calculator:'calc',
+    clock:'clock', calendar:'calendar', notes:'note', gallery:'image',
+    mail:'mail', music:'music', camera:'camera', help:'info', widgets:'widgets',
+    display:'monitor', system:'info'
+  };
+  const ART = {
+    browser: '<circle cx="24" cy="24" r="23" fill="#34a853"/>' +
+      '<path d="M24 24 L24 1 A23 23 0 0 1 43.9 35.5 Z" fill="#ea4335"/>' +
+      '<path d="M24 24 L43.9 35.5 A23 23 0 0 1 4.1 35.5 Z" fill="#fbbc04"/>' +
+      '<path d="M24 24 L4.1 35.5 A23 23 0 0 1 24 1 Z" fill="#4285f4"/>' +
+      '<circle cx="24" cy="24" r="10" fill="#fff"/><circle cx="24" cy="24" r="7.6" fill="#1a73e8"/>' +
+      '<path d="M16.6 24h14.8M24 16.6v14.8" stroke="#fff" stroke-width="1" opacity=".55"/>',
+    gallery: '<circle cx="24" cy="24" r="23" fill="#f1f3f4"/>' +
+      '<path d="M23 4a20 20 0 0 1 20 20h-9A11 11 0 0 0 23 13z" fill="#fbbc04"/>' +
+      '<path d="M43 24a20 20 0 0 1-20 20v-9a11 11 0 0 0 11-11z" fill="#ea4335"/>' +
+      '<path d="M23 44A20 20 0 0 1 3 24h9a11 11 0 0 0 11 11z" fill="#34a853"/>' +
+      '<path d="M3 24A20 20 0 0 1 23 4v9A11 11 0 0 0 12 24z" fill="#4285f4"/>',
+    mail: '<rect x="2" y="9" width="44" height="30" rx="5" fill="#fff"/>' +
+      '<path d="M4 13l20 14 20-14" fill="none" stroke="#ea4335" stroke-width="6" stroke-linejoin="round" stroke-linecap="round"/>' +
+      '<path d="M4 35h40" stroke="#4285f4" stroke-width="4" stroke-linecap="round"/>' +
+      '<path d="M4 13v22M44 13v22" stroke="#34a853" stroke-width="3" stroke-linecap="round"/>',
+    calendar: '<rect x="4" y="6" width="40" height="36" rx="5" fill="#fff"/>' +
+      '<path d="M4 11a5 5 0 0 1 5-5h30a5 5 0 0 1 5 5v6H4z" fill="#ea4335"/>' +
+      '<rect x="13" y="2" width="3.4" height="9" rx="1.7" fill="#c5221f"/>' +
+      '<rect x="32" y="2" width="3.4" height="9" rx="1.7" fill="#c5221f"/>' +
+      '<text x="24" y="35" text-anchor="middle" font-size="19" font-weight="700" fill="#3c4043" font-family="Arial,sans-serif">27</text>',
+    clock: '<circle cx="24" cy="24" r="22" fill="#1a73e8"/>' +
+      '<circle cx="24" cy="24" r="17.5" fill="#fff"/>' +
+      '<path d="M24 13v11l8 5" stroke="#1a73e8" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>' +
+      '<circle cx="24" cy="24" r="2.6" fill="#ea4335"/>' +
+      '<path d="M24 8v3M40 24h-3M24 40v-3M8 24h3" stroke="#8ab4f8" stroke-width="2" stroke-linecap="round"/>',
+    terminal: '<rect x="1" y="1" width="46" height="46" rx="23" fill="#20242c"/>' +
+      '<path d="M11 18l7 6-7 6" stroke="#7fd1a6" stroke-width="3.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>' +
+      '<path d="M23 31h12" stroke="#7fd1a6" stroke-width="3.2" stroke-linecap="round"/>' +
+      '<circle cx="10" cy="9" r="1.6" fill="#ea4335"/><circle cx="15" cy="9" r="1.6" fill="#fbbc04"/><circle cx="20" cy="9" r="1.6" fill="#34a853"/>',
+    files: '<circle cx="24" cy="24" r="23" fill="#1a73e8"/>' +
+      '<path d="M11 18a3 3 0 0 1 3-3h7l3 3h9a3 3 0 0 1 3 3v12a3 3 0 0 1-3 3H14a3 3 0 0 1-3-3z" fill="#fff"/>' +
+      '<path d="M11 25h26v8a3 3 0 0 1-3 3H14a3 3 0 0 1-3-3z" fill="#8ab4f8"/>',
+    editor: '<circle cx="24" cy="24" r="23" fill="#f9ab00"/>' +
+      '<path d="M14 8h14l7 7v24a2 2 0 0 1-2 2H14a2 2 0 0 1-2-2V10a2 2 0 0 1 2-2z" fill="#fff"/>' +
+      '<path d="M28 8v7h7z" fill="#ffe0a3"/>' +
+      '<path d="M17 22h13M17 27h13M17 32h9" stroke="#f9ab00" stroke-width="2.2" stroke-linecap="round"/>',
+    settings: '<circle cx="24" cy="24" r="23" fill="#9334e6"/>' +
+      '<g fill="#fff"><circle cx="24" cy="24" r="13"/>' +
+      '<rect x="21" y="5" width="6" height="12" rx="2"/>' +
+      '<rect x="21" y="5" width="6" height="12" rx="2" transform="rotate(45 24 24)"/>' +
+      '<rect x="21" y="5" width="6" height="12" rx="2" transform="rotate(90 24 24)"/>' +
+      '<rect x="21" y="5" width="6" height="12" rx="2" transform="rotate(135 24 24)"/>' +
+      '<rect x="21" y="5" width="6" height="12" rx="2" transform="rotate(180 24 24)"/>' +
+      '<rect x="21" y="5" width="6" height="12" rx="2" transform="rotate(225 24 24)"/>' +
+      '<rect x="21" y="5" width="6" height="12" rx="2" transform="rotate(270 24 24)"/>' +
+      '<rect x="21" y="5" width="6" height="12" rx="2" transform="rotate(315 24 24)"/></g>' +
+      '<circle cx="24" cy="24" r="6" fill="#9334e6"/>'
+  };
+
+  /** Colourful app artwork. `id` is an app id from the catalogue. */
+  function appArt(id, size) {
+    size = size || 40;
+    var inner = ART[id];
+    if (!inner) {
+      inner = '<circle cx="24" cy="24" r="23" fill="' + (ART_BG[id] || '#5f6368') + '"/>' +
+        '<g transform="translate(5.2 5.2) scale(1.57)" fill="none" stroke="#fff" ' +
+        'stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" opacity=".97">' +
+        (P[APP_GLYPH[id]] || P.info) + '</g>';
+    }
+    return '<svg class="app-art" viewBox="0 0 48 48" width="' + size + '" height="' + size +
+      '" aria-hidden="true">' + inner + '</svg>';
+  }
+
+  global.Icon = { svg: svg, appTile: appTile, appArt: appArt, hydrate: hydrate, names: Object.keys(P) };
 })(window);

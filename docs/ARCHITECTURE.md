@@ -82,13 +82,12 @@ Rust toolchain in the sandbox.
 ## Branding
 
 All Google-specific elements from the reference leaks were removed: no Chrome,
-Play Store, Gemini, Google Search bar or Google account flows. Replacements:
+Play Store, Google Search bar, or Google account flows. Replacements:
 
 | Aluminium OS | Debian Minerva |
 |---|---|
 | Google Search bar | Minerva Search (local app/files search) |
 | Chrome | Minerva Web |
 | Play Store | Software |
-| Gemini | Minerva assistant (local help) |
 | Google apps folder | Debian app grid |
 | Android setup wizard | Debian Minerva welcome wizard |

@@ -179,7 +179,8 @@
       uptime_secs: Math.floor(performance.now() / 1000) + 3600,
       loadavg: '0.42 0.38 0.31', session: 'minerva-shell (browser preview)',
       toolkit: 'Minerva Shell / Rust-compatible core', de: 'Debian Minerva',
-      de_version: '0.1.0', rustc: 'rustc (native daemon not attached)'
+      de_version: '0.1.0', rustc: 'rustc (native daemon not attached)',
+      battery_level: 0.94, battery_charging: false, battery_present: false
     };
   }
 

@@ -8,7 +8,7 @@ These are the concrete details recreated in Minerva's shell.
 1. **January 2026 — Google Issue Tracker bug report** (`ALOS`, Android 16,
    HP Elite Dragonfly Chromebook, build `ZL1A.260119.001.A1`).
    Shows split-screen Chrome windows, Play Store, top status bar with time +
-   date + screen-record indicator + `EN` + Gemini + Wi-Fi + battery, and a
+   date + screen-record indicator + `EN` + Wi-Fi + battery, and a
    full-width white bottom taskbar with centred icons.
 2. **May 2026 — Mystic Leaks** (Android 17, MacBook Pro via UTM, 16-minute
    video + screenshot gallery). Shows the home screen with desktop icons,
@@ -37,7 +37,6 @@ These are the concrete details recreated in Minerva's shell.
 ## Elements intentionally changed
 
 - Google Search → **Minerva Search** (searches local apps only, no network)
-- Gemini sparkle → **Minerva assistant** (local help)
 - Play Store → **Software** (local app catalogue)
 - Chrome/Chrome Dev → **Minerva Web** (bundled start page, no network)
 - Android version / build strings → Debian Minerva version + `/proc` kernel

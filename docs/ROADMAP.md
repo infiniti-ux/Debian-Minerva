@@ -44,7 +44,7 @@
 
 ## Non-goals
 
-- Bundling any Google service, Play Services, Chrome, Gemini or proprietary
+- Bundling any Google service, Play Services, Chrome or proprietary
   blobs
 - Tracking the Aluminium OS UI beyond design inspiration
 - Replacing Debian's packaging or init system
