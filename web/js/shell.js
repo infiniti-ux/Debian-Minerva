@@ -337,11 +337,11 @@
         if (r && r.ok) { refreshRunning(); if (MODE === 'launcher') PanelWin.selfClose(); return; }
         if (r && r.hint) { toast(r.hint); if (MODE === 'launcher') PanelWin.selfClose(); return; }
         if (MODE && MODE !== 'desktop') {
-          // panel window: ask the desktop surface to open the JS fallback
+          // legacy panel window: ask the desktop surface to open the fallback
           API.execFallback(id);
           if (MODE === 'launcher') PanelWin.selfClose();
         } else {
-          dispatch({ type: 'launch', app: id });
+          toast('Could not launch ' + appName(id) + ((r && r.error) ? ': ' + r.error : ''));
         }
       });
       return;

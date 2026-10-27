@@ -1,3 +1,17 @@
+debian-minerva (0.4.1) unstable; urgency=medium
+
+  * Fix E0382 in running_json(): the EWMH window id was moved into the JSON
+    object and then compared for focus — the 0.4.0 source did not compile.
+  * Shell-surface enforcer: a small session loop re-applies EWMH state
+    (below, fullscreen, skip_taskbar/pager) to the shell surface every few
+    seconds via wmctrl, so no client behaviour or missed WM rule can ever
+    unpin the desktop surface; raiseOnFocus restored to yes for standard
+    click-to-raise behaviour of app windows.
+  * In a real session a failed app launch now shows the daemon error as a
+    toast instead of silently opening a JS fallback window.
+
+ -- Debian Minerva contributors <minerva@example.org>  Tue, 27 Oct 2026 23:10:00 +0700
+
 debian-minerva (0.4.0) unstable; urgency=medium
 
   * Session v3 "single surface": the whole Minerva desktop (wallpaper, top

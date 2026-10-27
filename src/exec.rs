@@ -232,7 +232,7 @@ impl Exec {
                 let app = Self::guess_app(&class);
                 if !app.is_empty() && !apps.contains(&app) { apps.push(app.clone()); }
                 wins.push(Value::obj(vec![
-                    ("id".into(), Value::s(hex)),
+                    ("id".into(), Value::s(hex.clone())),
                     ("title".into(), Value::s(title)),
                     ("class".into(), Value::s(class)),
                     ("app".into(), Value::s(app)),
