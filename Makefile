@@ -26,15 +26,17 @@ reference:
 install: build
 	install -Dm755 target/release/minerva-sessiond $(DESTDIR)$(PREFIX)/bin/minerva-sessiond
 	install -Dm755 session/minerva-session $(DESTDIR)$(PREFIX)/bin/minerva-session
+	install -Dm755 session/minerva-ctl $(DESTDIR)$(PREFIX)/bin/minerva-ctl
 	mkdir -p $(DESTDIR)$(PREFIX)/share/minerva/web
 	cp -r web/. $(DESTDIR)$(PREFIX)/share/minerva/web/
-	install -Dm644 session/minerva.desktop $(DESTDIR)$(PREFIX)/share/wayland-sessions/minerva.desktop
+	install -Dm644 session/openbox/menu.xml $(DESTDIR)$(PREFIX)/share/minerva/openbox/menu.xml
 	install -Dm644 session/minerva.desktop $(DESTDIR)$(PREFIX)/share/xsessions/minerva.desktop
 	install -Dm644 packaging/minerva-sessiond.service $(DESTDIR)$(PREFIX)/lib/systemd/user/minerva-sessiond.service
 
 uninstall:
 	rm -f $(DESTDIR)$(PREFIX)/bin/minerva-sessiond
 	rm -f $(DESTDIR)$(PREFIX)/bin/minerva-session
+	rm -f $(DESTDIR)$(PREFIX)/bin/minerva-ctl
 	rm -rf $(DESTDIR)$(PREFIX)/share/minerva
 	rm -f $(DESTDIR)$(PREFIX)/share/wayland-sessions/minerva.desktop
 	rm -f $(DESTDIR)$(PREFIX)/share/xsessions/minerva.desktop
@@ -44,7 +46,7 @@ uninstall:
 deb:
 	dpkg-buildpackage -us -uc -b
 
-# Run the full desktop session right here (needs cage or an X display)
+# Run the full desktop session right here (needs X + openbox; falls back to cage)
 session: build
 	MINERVA_DAEMON=./target/release/minerva-sessiond MINERVA_WEBROOT=./web ./session/minerva-session
 

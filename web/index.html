@@ -4,66 +4,34 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#0b1020">
-  <title>Debian Minerva</title>
+  <title>Minerva</title>
   <link rel="icon" type="image/svg+xml" href="favicon.svg">
   <link rel="stylesheet" href="css/minerva.css">
+  <script>
+    // Window role: in a real Minerva X11 session each window (desktop, top
+    // bar, dock, launcher, popovers…) is this same page with a #role hash.
+    // Set the role before first paint so the right surface shows instantly.
+    (function () {
+      var ROLE_TITLES = {
+        desktop: 'Minerva Desktop', topbar: 'Minerva Top Bar', dock: 'Minerva Dock',
+        launcher: 'Minerva Launcher', wifi: 'Minerva Wi-Fi', audio: 'Minerva Audio',
+        battery: 'Minerva Battery', calendar: 'Minerva Calendar', power: 'Minerva Power',
+        shade: 'Minerva Notifications', settings: 'Minerva Settings'
+      };
+      var mode = (location.hash || '').replace(/^#/, '').split('?')[0];
+      if (mode) {
+        document.documentElement.dataset.mode = mode;
+        document.title = ROLE_TITLES[mode] || 'Minerva';
+      }
+    })();
+  </script>
 </head>
 <body class="theme-dark wallpaper-swirl">
 
-  <!-- ===================================================== boot splash -->
-  <div id="boot" class="boot">
-    <div class="boot-center">
-      <img class="boot-logo" src="assets/logo.svg" alt="Debian Minerva">
-      <div class="boot-wordmark">Minerva</div>
-      <div class="boot-sub">Debian GNU/Linux · Rust session</div>
-      <div class="boot-progress"><span id="boot-bar"></span></div>
-      <div class="boot-status" id="boot-status">Starting session services…</div>
-    </div>
-    <div class="boot-footer">
-      <span>Debian Minerva 0.1.0</span>
-      <button id="boot-skip" class="text-btn">Skip boot animation</button>
-    </div>
-  </div>
-
-  <!-- ===================================================== first run -->
-  <div id="setup" class="setup hidden">
-    <div class="setup-card">
-      <div class="setup-side">
-        <img src="assets/logo.svg" alt="">
-        <h2>Welcome to<br>Debian Minerva</h2>
-        <p>A Rust-built desktop session for Debian.</p>
-      </div>
-      <div class="setup-body">
-        <div class="setup-step" data-step="1">
-          <h3>Choose your language</h3>
-          <p class="muted">Used for the interface and keyboard layout.</p>
-          <div class="setup-options" id="setup-langs"></div>
-        </div>
-        <div class="setup-step hidden" data-step="2">
-          <h3>Pick a look</h3>
-          <p class="muted">You can change this any time in Settings.</p>
-          <div class="setup-options" id="setup-themes"></div>
-        </div>
-        <div class="setup-step hidden" data-step="3">
-          <h3>You're all set</h3>
-          <p class="muted">A few shortcuts to get you started:</p>
-          <ul class="shortcut-list">
-            <li><kbd>Super</kbd> <span>Open the app launcher</span></li>
-            <li><kbd>Alt</kbd> + <kbd>Tab</kbd> <span>Switch windows</span></li>
-            <li><kbd>Super</kbd> + <kbd>W</kbd> <span>Virtual desktops overview</span></li>
-            <li><kbd>Ctrl</kbd> + <kbd>Alt</kbd> + <kbd>T</kbd> <span>Open a terminal</span></li>
-          </ul>
-        </div>
-        <div class="setup-actions">
-          <button class="text-btn" id="setup-skip">Skip setup</button>
-          <button class="primary-btn" id="setup-next">Next</button>
-        </div>
-      </div>
-    </div>
-  </div>
+  <!-- boot splash & first-run wizard removed: a real session starts on the desktop -->
 
   <!-- ===================================================== desktop -->
-  <div id="desktop" class="desktop hidden">
+  <div id="desktop" class="desktop">
     <div id="wallpaper" class="wallpaper"></div>
 
     <!-- desktop widgets / icons -->
@@ -94,12 +62,9 @@
         </button>
       </div>
       <div class="sb-right">
-        <button class="sb-icon" id="sb-sync" title="Sync" data-tip="Sync"><span data-icon="sync"></span></button>
-        <button class="sb-icon" id="sb-location" title="Location"><span data-icon="location"></span></button>
-        <button class="sb-icon" id="sb-record" title="Screen record"><span data-icon="record"></span></button>
-        <button class="sb-text" id="sb-lang" title="Keyboard layout">EN</button>
         <button class="sb-icon" id="sb-notif" title="Notifications"><span data-icon="bell"></span><i id="notif-dot" class="notif-dot hidden"></i></button>
         <button class="sb-icon" id="sb-wifi" title="Wi-Fi"><span data-icon="wifi"></span></button>
+        <button class="sb-icon" id="sb-audio" title="Audio"><span data-icon="volume"></span></button>
         <button class="sb-icon" id="sb-battery" title="Battery"><span data-battery></span><span id="sb-batt-num">94%</span></button>
         <button class="sb-icon" id="sb-power" title="Power"><span data-icon="power"></span></button>
       </div>
@@ -167,6 +132,11 @@
     <div id="context-menu" class="context-menu hidden"></div>
     <div id="power-menu" class="context-menu hidden"></div>
     <div id="calendar-pop" class="panel calendar-pop hidden"></div>
+    <div id="wifi-pop" class="panel pop hidden"></div>
+    <div id="audio-pop" class="panel pop hidden"></div>
+    <div id="battery-pop" class="panel pop hidden"></div>
+    <div id="power-pop" class="panel pop hidden"></div>
+    <div id="settings-win" class="settings-win hidden"></div>
 
     <!-- misc -->
     <div id="snap-preview" class="snap-preview hidden"></div>
@@ -178,6 +148,7 @@
   <script src="js/icons.js"></script>
   <script src="js/api.js"></script>
   <script src="js/apps.js"></script>
+  <script src="js/panelwin.js"></script>
   <script src="js/shell.js"></script>
 </body>
 </html>

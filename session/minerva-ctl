@@ -1,0 +1,47 @@
+#!/bin/sh
+# minerva-ctl — talk to the running Minerva session daemon.
+# Used by openbox keybinds, the root menu, and anything that needs to open a
+# Minerva panel or launch a real app from outside the shell windows.
+set -u
+
+RT="${XDG_RUNTIME_DIR:-/tmp}/minerva"
+ENVF="$RT/session.env"
+
+if [ ! -f "$ENVF" ]; then
+  echo "minerva-ctl: no Minerva session running" >&2
+  exit 1
+fi
+# shellcheck disable=SC1090
+. "$ENVF"
+
+if ! command -v curl >/dev/null 2>&1; then
+  echo "minerva-ctl: curl is required" >&2
+  exit 1
+fi
+
+post() {
+  curl -s -X POST "$MINERVA_API/exec" \
+    -H "Content-Type: application/json" \
+    -H "X-Minerva-Token: $MINERVA_TOKEN" \
+    -d "$1" >/dev/null
+}
+
+usage() {
+  cat >&2 <<EOF
+usage:
+  minerva-ctl panel <launcher|wifi|audio|battery|calendar|power|shade|settings|topbar|dock>
+  minerva-ctl app <id>            launch a real app (terminal, files, web, ...
+                                  or a .desktop id like org.gnome.Calculator)
+  minerva-ctl cmd <logout|lock|reboot|shutdown|showdesktop>
+EOF
+  exit 2
+}
+
+[ $# -ge 2 ] || usage
+
+case "$1" in
+  panel) post "{\"panel\":\"$2\"}" ;;
+  app) post "{\"desktop\":\"$2\",\"app\":\"$2\"}" ;;
+  cmd)   post "{\"cmd\":\"$2\"}" ;;
+  *)     usage ;;
+esac

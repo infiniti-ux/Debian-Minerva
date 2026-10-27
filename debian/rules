@@ -15,9 +15,10 @@ override_dh_auto_test:
 override_dh_auto_install:
 	install -Dm755 target/release/minerva-sessiond debian/debian-minerva/usr/bin/minerva-sessiond
 	install -Dm755 session/minerva-session debian/debian-minerva/usr/bin/minerva-session
+	install -Dm755 session/minerva-ctl debian/debian-minerva/usr/bin/minerva-ctl
 	mkdir -p debian/debian-minerva/usr/share/minerva/web
 	cp -r web/. debian/debian-minerva/usr/share/minerva/web/
-	install -Dm644 session/minerva.desktop debian/debian-minerva/usr/share/wayland-sessions/minerva.desktop
+	install -Dm644 session/openbox/menu.xml debian/debian-minerva/usr/share/minerva/openbox/menu.xml
 	install -Dm644 session/minerva.desktop debian/debian-minerva/usr/share/xsessions/minerva.desktop
 	install -Dm644 packaging/minerva-sessiond.service debian/debian-minerva/usr/lib/systemd/user/minerva-sessiond.service
 

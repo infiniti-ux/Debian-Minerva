@@ -3,15 +3,21 @@
 # Debian Minerva — display-manager session entry.
 #
 # Selected as "Minerva" on the login screen (GDM / LightDM / SDDM), this
-# script owns the whole desktop lifetime:
+# script owns the whole desktop lifetime. On X11 (the normal case) Minerva
+# runs as a REAL desktop session:
 #
-#   1. spawns the Rust session daemon (minerva-sessiond) on loopback with a
-#      per-session token and supervises it (auto-restart on crash),
-#   2. picks a kiosk runtime: X11 display → browser kiosk on $DISPLAY,
-#      Wayland → `cage` (fallback `weston`) wrapping the same kiosk browser,
-#   3. tears everything down when the shell exits (logout / crash).
+#   openbox          — the window manager: real windows, Alt+Tab, snapping
+#   desktop window   — Minerva desktop surface (wallpaper, widgets), bottom layer
+#   topbar window    — always-on-top status panel (clock, wifi, battery, power)
+#   dock window      — always-on-top taskbar, flush to the bottom of the screen
+#   panel windows    — launcher / wifi / audio / notifications / settings,
+#                      opened on demand by the daemon as real X windows
+#   real apps        — clicking an app spawns the real program (terminal,
+#                      file manager, browser, ...), managed by openbox
 #
-# Nothing here needs the network: the shell is served by the daemon itself.
+# The Rust daemon (minerva-sessiond) owns session state and does all process
+# spawning on 127.0.0.1 with a per-session token. Without X11/openbox the
+# script falls back to a single-window kiosk (cage/weston on Wayland).
 # ===========================================================================
 set -u
 
@@ -19,11 +25,15 @@ PORT="${MINERVA_PORT:-47801}"
 BIND="127.0.0.1"
 DAEMON="${MINERVA_DAEMON:-/usr/bin/minerva-sessiond}"
 WEBROOT="${MINERVA_WEBROOT:-/usr/share/minerva/web}"
+SHAREDIR="${MINERVA_SHAREDIR:-/usr/share/minerva}"
 
 STATE="${XDG_STATE_HOME:-$HOME/.local/state}/minerva"
 mkdir -p "$STATE" 2>/dev/null || STATE="/tmp/minerva-$USER"
 mkdir -p "$STATE"
 LOG="$STATE/session.log"
+
+RT="${XDG_RUNTIME_DIR:-/tmp}/minerva"
+mkdir -p "$RT" && chmod 700 "$RT" 2>/dev/null
 
 TOKEN="$(cat /proc/sys/kernel/random/uuid 2>/dev/null || echo "minerva-$$-$(date +%s)")"
 URL="http://$BIND:$PORT/?token=$TOKEN"
@@ -31,17 +41,25 @@ URL="http://$BIND:$PORT/?token=$TOKEN"
 DAEMON_PID=""
 WATCH_PID=""
 SHELL_PID=""
+WM_PID=""
+PIDFILE="$STATE/sessiond.pid"
 
 log() { echo "[minerva-session] $*" >>"$LOG"; }
 
-PIDFILE="$STATE/sessiond.pid"
+# Session credentials for minerva-ctl (openbox keybinds, root menu)
+{
+  echo "MINERVA_PORT=$PORT"
+  echo "MINERVA_TOKEN=$TOKEN"
+  echo "MINERVA_API=http://$BIND:$PORT/api/v1"
+} >"$RT/session.env"
+chmod 600 "$RT/session.env" 2>/dev/null
 
 start_daemon() {
   "$DAEMON" --port "$PORT" --bind "$BIND" --token "$TOKEN" --web-root "$WEBROOT" \
     >>"$LOG" 2>&1 &
   DAEMON_PID=$!
   echo "$DAEMON_PID" >"$PIDFILE"
-  log "daemon started pid=$DAEMON_PID port=$PORT"
+  log "daemon started pid=$DAEMON_PID port=$PORT mode=${MINERVA_SESSION_MODE:-kiosk}"
 }
 
 stop_daemon() {
@@ -59,11 +77,195 @@ cleanup() {
   log "session ending"
   [ -n "$WATCH_PID" ] && kill "$WATCH_PID" 2>/dev/null
   [ -n "$SHELL_PID" ] && kill "$SHELL_PID" 2>/dev/null
+  [ -n "$WM_PID" ] && kill "$WM_PID" 2>/dev/null
+  # on-demand panel windows live in their own chromium profile/process
+  pkill -f "user-data-dir=$RT/panels" 2>/dev/null
   stop_daemon
+  rm -f "$RT/session.env"
 }
 trap cleanup EXIT INT TERM
 
-# --- 1. daemon + supervisor -------------------------------------------------
+# --- browser + runtime detection --------------------------------------------
+pick_browser() {
+  if [ -n "${MINERVA_BROWSER:-}" ] && command -v "$MINERVA_BROWSER" >/dev/null 2>&1; then
+    echo "$MINERVA_BROWSER"
+    return 0
+  fi
+  for b in chromium chromium-browser firefox-esr firefox epiphany-browser; do
+    command -v "$b" >/dev/null 2>&1 && { echo "$b"; return 0; }
+  done
+  echo ""
+}
+
+BROWSER="$(pick_browser)"
+if [ -z "$BROWSER" ]; then
+  log "FATAL: no browser runtime found"
+  echo "Minerva: install a shell runtime first:  sudo apt install chromium openbox" >&2
+  exit 1
+fi
+
+CHROMIUM=no
+case "$(basename "$BROWSER")" in chromium|chromium-browser) CHROMIUM=yes ;; esac
+
+MULTIWIN=no
+if [ -n "${DISPLAY:-}" ] && [ "$CHROMIUM" = yes ] && command -v openbox >/dev/null 2>&1; then
+  MULTIWIN=yes
+fi
+
+# --- screen geometry (for panel placement) ----------------------------------
+SCREEN_W=1920
+SCREEN_H=1080
+if command -v xrandr >/dev/null 2>&1; then
+  dims="$(xrandr 2>/dev/null | awk '/\*/ {print $1; exit}')"
+  case "$dims" in
+    *x*) SCREEN_W="${dims%%x*}"; SCREEN_H="${dims##*x}" ;;
+  esac
+elif command -v xdpyinfo >/dev/null 2>&1; then
+  dims="$(xdpyinfo 2>/dev/null | awk '/dimensions:/ {print $2; exit}')"
+  case "$dims" in
+    *x*) SCREEN_W="${dims%%x*}"; SCREEN_H="${dims##*x}" ;;
+  esac
+fi
+log "screen ${SCREEN_W}x${SCREEN_H}"
+
+# --- openbox configuration (generated with real geometry) --------------------
+write_openbox_config() {
+  OB_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/openbox"
+  mkdir -p "$OB_DIR"
+  # never clobber a foreign user config without keeping it
+  if [ -f "$OB_DIR/rc.xml" ] && ! grep -q "minerva-generated" "$OB_DIR/rc.xml" 2>/dev/null; then
+    cp "$OB_DIR/rc.xml" "$OB_DIR/rc.xml.pre-minerva" 2>/dev/null
+  fi
+  TB_H=40
+  DOCK_H=56
+  DOCK_Y=$((SCREEN_H - DOCK_H))
+  [ "$DOCK_Y" -lt 0 ] && DOCK_Y=0
+  POP_Y=$((TB_H + 8))
+  LAUNCH_H=600
+  LAUNCH_Y=$((DOCK_Y - LAUNCH_H - 14))
+  [ "$LAUNCH_Y" -lt "$POP_Y" ] && LAUNCH_Y="$POP_Y"
+  cat >"$OB_DIR/rc.xml" <<RCEOF
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- minerva-generated: rewritten at every login by /usr/bin/minerva-session -->
+<openbox_config xmlns="http://openbox.org/3.4/rc">
+  <resistance><strength>10</strength><screen_edge_strength>20</screen_edge_strength></resistance>
+  <focus><focusNew>yes</focusNew><followMouse>no</followMouse><focusLast>yes</focusLast></focus>
+  <theme><name>Clearlooks</name><titleLayout>NLIMC</titleLayout>
+    <font place="ActiveWindow"><name>sans</name><size>9</size><weight>bold</weight></font>
+    <font place="InactiveWindow"><name>sans</name><size>9</size><weight>bold</weight></font>
+    <font place="MenuItem"><name>sans</name><size>10</size><weight>normal</weight></font>
+  </theme>
+  <desktops><number>4</number><firstdesk>1</firstdesk><names><name>1</name><name>2</name><name>3</name><name>4</name></names></desktops>
+  <resize><popupShow>Nonpixel</popupShow></resize>
+  <keyboard>
+    <keybind key="A-Tab"><action name="NextWindow"><allDesktops>yes</allDesktops></action></keybind>
+    <keybind key="A-S-Tab"><action name="PreviousWindow"><allDesktops>yes</allDesktops></action></keybind>
+    <keybind key="A-F4"><action name="Close"/></keybind>
+    <keybind key="Super_L"><action name="Execute"><command>minerva-ctl panel launcher</command></action></keybind>
+    <keybind key="Super_R"><action name="Execute"><command>minerva-ctl panel launcher</command></action></keybind>
+    <keybind key="W-space"><action name="ShowMenu"><menu>root-menu</menu></action></keybind>
+    <keybind key="C-A-T"><action name="Execute"><command>minerva-ctl app terminal</command></action></keybind>
+    <keybind key="W-e"><action name="Execute"><command>minerva-ctl app files</command></action></keybind>
+    <keybind key="W-w"><action name="Execute"><command>minerva-ctl app web</command></action></keybind>
+    <keybind key="W-d"><action name="ToggleShowDesktop"/></keybind>
+    <keybind key="W-l"><action name="Execute"><command>minerva-ctl cmd lock</command></action></keybind>
+    <keybind key="W-Left"><action name="GoToDesktop"><to>previous</to></action></keybind>
+    <keybind key="W-Right"><action name="GoToDesktop"><to>next</to></action></keybind>
+    <keybind key="W-S-Left"><action name="SendToDesktop"><to>previous</to><follow>yes</follow></action></keybind>
+    <keybind key="W-S-Right"><action name="SendToDesktop"><to>next</to><follow>yes</follow></action></keybind>
+    <keybind key="XF86AudioRaiseVolume"><action name="Execute"><command>sh -c "pactl set-sink-volume @DEFAULT_SINK@ +5% 2>/dev/null || amixer -q set Master 5%+"</command></action></keybind>
+    <keybind key="XF86AudioLowerVolume"><action name="Execute"><command>sh -c "pactl set-sink-volume @DEFAULT_SINK@ -5% 2>/dev/null || amixer -q set Master 5%-"</command></action></keybind>
+    <keybind key="XF86AudioMute"><action name="Execute"><command>sh -c "pactl set-sink-mute @DEFAULT_SINK@ toggle 2>/dev/null || amixer -q set Master toggle"</command></action></keybind>
+  </keyboard>
+  <mouse>
+    <context name="Frame">
+      <mousebind button="A-Left" action="Drag"><action name="Move"/></mousebind>
+      <mousebind button="A-Right" action="Drag"><action name="Resize"/></mousebind>
+    </context>
+    <context name="Root">
+      <mousebind button="Right" action="Press"><action name="ShowMenu"><menu>root-menu</menu></action></mousebind>
+    </context>
+  </mouse>
+  <applications>
+    <application class="minerva-desktop">
+      <decor>no</decor><layer>below</layer><fullscreen>yes</fullscreen>
+      <skip_taskbar>yes</skip_taskbar><skip_pager>yes</skip_pager>
+      <position force="yes"><x>0</x><y>0</y></position>
+      <size><width>${SCREEN_W}</width><height>${SCREEN_H}</height></size>
+    </application>
+    <application class="minerva-topbar">
+      <decor>no</decor><layer>dock</layer>
+      <skip_taskbar>yes</skip_taskbar><skip_pager>yes</skip_pager>
+      <position force="yes"><x>0</x><y>0</y></position>
+      <size><width>${SCREEN_W}</width><height>${TB_H}</height></size>
+    </application>
+    <application class="minerva-dock">
+      <decor>no</decor><layer>dock</layer>
+      <skip_taskbar>yes</skip_taskbar><skip_pager>yes</skip_pager>
+      <position force="yes"><x>0</x><y>${DOCK_Y}</y></position>
+      <size><width>${SCREEN_W}</width><height>${DOCK_H}</height></size>
+    </application>
+    <application class="minerva-launcher">
+      <decor>no</decor><layer>dock</layer>
+      <skip_taskbar>yes</skip_taskbar><skip_pager>yes</skip_pager>
+      <position force="yes"><x center="yes">0</x><y>${LAUNCH_Y}</y></position>
+      <size><width>880</width><height>${LAUNCH_H}</height></size>
+    </application>
+    <application class="minerva-wifi">
+      <decor>no</decor><layer>dock</layer><skip_taskbar>yes</skip_taskbar><skip_pager>yes</skip_pager>
+      <position force="yes"><x>-8</x><y>${POP_Y}</y></position>
+      <size><width>372</width><height>470</height></size>
+    </application>
+    <application class="minerva-audio">
+      <decor>no</decor><layer>dock</layer><skip_taskbar>yes</skip_taskbar><skip_pager>yes</skip_pager>
+      <position force="yes"><x>-8</x><y>${POP_Y}</y></position>
+      <size><width>372</width><height>240</height></size>
+    </application>
+    <application class="minerva-battery">
+      <decor>no</decor><layer>dock</layer><skip_taskbar>yes</skip_taskbar><skip_pager>yes</skip_pager>
+      <position force="yes"><x>-8</x><y>${POP_Y}</y></position>
+      <size><width>372</width><height>320</height></size>
+    </application>
+    <application class="minerva-calendar">
+      <decor>no</decor><layer>dock</layer><skip_taskbar>yes</skip_taskbar><skip_pager>yes</skip_pager>
+      <position force="yes"><x>-8</x><y>${POP_Y}</y></position>
+      <size><width>372</width><height>430</height></size>
+    </application>
+    <application class="minerva-power">
+      <decor>no</decor><layer>dock</layer><skip_taskbar>yes</skip_taskbar><skip_pager>yes</skip_pager>
+      <position force="yes"><x>-8</x><y>${POP_Y}</y></position>
+      <size><width>260</width><height>240</height></size>
+    </application>
+    <application class="minerva-shade">
+      <decor>no</decor><layer>dock</layer><skip_taskbar>yes</skip_taskbar><skip_pager>yes</skip_pager>
+      <position force="yes"><x>-8</x><y>${POP_Y}</y></position>
+      <size><width>420</width><height>560</height></size>
+    </application>
+    <application class="minerva-settings">
+      <decor>no</decor><layer>above</layer><skip_taskbar>no</skip_taskbar><skip_pager>yes</skip_pager>
+      <position force="yes"><x center="yes">0</x><y center="yes">0</y></position>
+      <size><width>980</width><height>680</height></size>
+    </application>
+  </applications>
+</openbox_config>
+RCEOF
+  if [ -f "$SHAREDIR/openbox/menu.xml" ] && [ ! -f "$OB_DIR/menu.xml" ]; then
+    cp "$SHAREDIR/openbox/menu.xml" "$OB_DIR/menu.xml"
+  fi
+  log "openbox config written to $OB_DIR"
+}
+
+# --- daemon + supervisor ------------------------------------------------------
+if [ "$MULTIWIN" = yes ]; then
+  export MINERVA_SESSION_MODE=x11
+  export MINERVA_BROWSER="$BROWSER"
+  export MINERVA_SESSION_PID=$$
+else
+  export MINERVA_SESSION_MODE=kiosk
+  export MINERVA_BROWSER="$BROWSER"
+  export MINERVA_SESSION_PID=$$
+fi
+
 start_daemon
 
 watch_daemon() {
@@ -85,7 +287,6 @@ while [ "$i" -lt 50 ]; do
   if command -v curl >/dev/null 2>&1; then
     curl -fsS -o /dev/null "http://$BIND:$PORT/api/v1/health" 2>/dev/null && break
   else
-    # no curl: give the daemon a fixed grace period instead
     [ "$i" -ge 10 ] && break
   fi
   i=$((i + 1))
@@ -93,63 +294,55 @@ while [ "$i" -lt 50 ]; do
 done
 [ "$i" -lt 50 ] || log "warning: daemon not healthy after 10 s"
 
-# --- 2. kiosk runtime -------------------------------------------------------
-pick_browser() {
-  if [ -n "${MINERVA_BROWSER:-}" ] && command -v "$MINERVA_BROWSER" >/dev/null 2>&1; then
-    echo "$MINERVA_BROWSER"
-    return 0
-  fi
-  for b in chromium chromium-browser firefox-esr firefox epiphany-browser; do
-    command -v "$b" >/dev/null 2>&1 && { echo "$b"; return 0; }
-  done
-  echo ""
+# --- shell runtime -------------------------------------------------------------
+CHROME_FLAGS="--no-first-run --no-default-browser-check --disable-session-crashed-bubble --disable-dev-shm-usage --password-store=basic --disable-translate --check-for-update-interval=31536000"
+
+app_window() { # role profile
+  "$BROWSER" --app="$URL#$1" --class="minerva-$1" \
+    --user-data-dir="$RT/$2" $CHROME_FLAGS >>"$LOG" 2>&1
 }
 
-kiosk_args() {
-  case "$1" in
-    chromium|chromium-browser)
-      echo "--kiosk --app=$URL --no-first-run --no-default-browser-check --disable-translate --password-store=basic" ;;
-    firefox-esr|firefox)
-      echo "--kiosk $URL" ;;
-    epiphany-browser)
-      echo "--application-mode $URL" ;;
-    *)
-      # custom runtime (MINERVA_BROWSER): just hand it the shell URL
-      echo "$URL" ;;
-  esac
-}
-
-BROWSER="$(pick_browser)"
-if [ -z "$BROWSER" ]; then
-  log "FATAL: no browser runtime found"
-  echo "Minerva: install a kiosk runtime first:  sudo apt install chromium cage" >&2
-  exit 1
-fi
-
-log "shell runtime: $BROWSER (${DISPLAY:+x11}${WAYLAND_DISPLAY:+wayland})"
-
-if [ -n "${DISPLAY:-}" ]; then
-  # X11: the display manager already owns the X server.
-  # shellcheck disable=SC2086
-  $BROWSER $(kiosk_args "$BROWSER") >>"$LOG" 2>&1 &
+if [ "$MULTIWIN" = yes ]; then
+  log "session mode: x11 multi-window (openbox + $BROWSER)"
+  write_openbox_config
+  openbox --sm-disable >>"$LOG" 2>&1 &
+  WM_PID=$!
+  sleep 0.5
+  # desktop surface: its chromium process hosts desktop+topbar+dock windows
+  app_window desktop shell &
   SHELL_PID=$!
-elif command -v cage >/dev/null 2>&1; then
-  # Wayland: cage is the kiosk compositor — Minerva becomes the compositor
-  # session itself, i.e. a real desktop environment, not a browser tab.
-  # shellcheck disable=SC2086
-  cage -- $BROWSER $(kiosk_args "$BROWSER") >>"$LOG" 2>&1 &
-  SHELL_PID=$!
-elif command -v weston >/dev/null 2>&1; then
-  # shellcheck disable=SC2086
-  weston --socket=minerva -- $BROWSER $(kiosk_args "$BROWSER") >>"$LOG" 2>&1 &
-  SHELL_PID=$!
+  sleep 2
+  app_window topbar shell || log "warning: topbar window failed"
+  app_window dock shell || log "warning: dock window failed"
 else
-  log "FATAL: no Wayland compositor (cage/weston) and no X display"
-  echo "Minerva: no compositor found. Install one:  sudo apt install cage" >&2
-  exit 1
+  log "session mode: kiosk single-window ($BROWSER)"
+  case "$(basename "$BROWSER")" in
+    chromium|chromium-browser)
+      $BROWSER --kiosk --app="$URL" $CHROME_FLAGS >>"$LOG" 2>&1 &
+      SHELL_PID=$! ;;
+    firefox-esr|firefox)
+      $BROWSER --kiosk "$URL" >>"$LOG" 2>&1 &
+      SHELL_PID=$! ;;
+    *)
+      if [ -n "${DISPLAY:-}" ]; then
+        # shellcheck disable=SC2086
+        $BROWSER "$URL" >>"$LOG" 2>&1 &
+        SHELL_PID=$!
+      elif command -v cage >/dev/null 2>&1; then
+        cage -- $BROWSER "$URL" >>"$LOG" 2>&1 &
+        SHELL_PID=$!
+      elif command -v weston >/dev/null 2>&1; then
+        weston --socket=minerva -- $BROWSER "$URL" >>"$LOG" 2>&1 &
+        SHELL_PID=$!
+      else
+        log "FATAL: no X display and no Wayland compositor"
+        echo "Minerva: no compositor found. Install one:  sudo apt install cage" >&2
+        exit 1
+      fi ;;
+  esac
 fi
 
-# --- 3. session lives as long as the shell ----------------------------------
+# --- session lives as long as the desktop surface ------------------------------
 wait "$SHELL_PID"
 EXIT_CODE=$?
 log "shell exited code=$EXIT_CODE"

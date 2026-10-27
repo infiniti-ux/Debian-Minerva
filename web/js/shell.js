@@ -14,6 +14,13 @@
   var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]; }); };
   var clamp = function (v, a, b) { return Math.max(a, Math.min(b, v)); };
 
+  // Window role in a real X11 session (each role is its own X window loaded
+  // with a #hash): '', 'desktop', 'topbar', 'dock', 'launcher', 'wifi', ...
+  var MODE = document.documentElement.dataset.mode || '';
+  var X11 = false;          // real multi-window session (set after probe)
+  var REAL_APPS = [];       // installed .desktop applications (real catalogue)
+  var REAL_RUNNING = {};    // id -> true for real processes launched via daemon
+
   // ------------------------------------------------------------- app catalog
   var APPS = [
     { id: 'files', name: 'Files', icon: 'folder', group: 'System', w: 880, h: 540, pinned: true, summary: 'Browse your home directory' },
@@ -250,7 +257,80 @@
   }
   var pendingEditorPath = null;
 
-  function openApp(id) { dispatch({ type: 'launch', app: id }); }
+  function openPanelGuarded(role) {
+    // Panel windows close themselves on blur; clicking the same top-bar icon
+    // again right after must NOT reopen (that would defeat toggle behaviour).
+    var now = Date.now(), lastRole = '', lastTs = 0;
+    try {
+      lastRole = localStorage.getItem('minerva.lp.role') || '';
+      lastTs = Number(localStorage.getItem('minerva.lp.ts') || 0);
+    } catch (e) {}
+    if (lastRole === role && now - lastTs < 900) {
+      try { localStorage.removeItem('minerva.lp.role'); } catch (e) {}
+      return;
+    }
+    try { localStorage.setItem('minerva.lp.role', role); localStorage.setItem('minerva.lp.ts', String(now)); } catch (e) {}
+    API.openPanel(role);
+  }
+
+  function popover(name, sel) {
+    if (X11) { openPanelGuarded(name); return; }
+    if (window.PanelWin) PanelWin.fill(name, $(sel));
+    togglePanel(sel);
+  }
+
+  function refreshRunning() {
+    if (!X11) return;
+    API.running().then(function (list) {
+      REAL_RUNNING = {};
+      (list || []).forEach(function (a) { REAL_RUNNING[a.id] = true; });
+      if (!MODE || MODE === 'dock' || MODE === 'desktop') renderDock();
+    });
+  }
+
+  function startPolling() {
+    var lastSig = '';
+    setInterval(function () {
+      API.getState().then(function (snap) {
+        if (!snap) return;
+        var sig = JSON.stringify(snap);
+        if (sig === lastSig) return;
+        lastSig = sig;
+        fromServer(snap);
+        render();
+      });
+    }, 2500);
+    setInterval(refreshRunning, 4000);
+    if (!MODE || MODE === 'desktop') {
+      // JS-window fallbacks requested from panel windows (launcher, dock)
+      setInterval(function () {
+        API.takePending().then(function (r) {
+          if (r && r.apps && r.apps.length) {
+            r.apps.forEach(function (id) { dispatch({ type: 'launch', app: id }); });
+          }
+        });
+      }, 2000);
+    }
+  }
+
+  function openApp(id, arg) {
+    if (X11) {
+      if (id === 'settings') { openPanelGuarded('settings'); return; }
+      API.execApp(id, arg).then(function (r) {
+        if (r && r.ok) { refreshRunning(); if (MODE === 'launcher') PanelWin.selfClose(); return; }
+        if (r && r.hint) { toast(r.hint); if (MODE === 'launcher') PanelWin.selfClose(); return; }
+        if (MODE && MODE !== 'desktop') {
+          // panel window: ask the desktop surface to open the JS fallback
+          API.execFallback(id);
+          if (MODE === 'launcher') PanelWin.selfClose();
+        } else {
+          dispatch({ type: 'launch', app: id });
+        }
+      });
+      return;
+    }
+    dispatch({ type: 'launch', app: id });
+  }
 
   function termContext() {
     return {
@@ -402,13 +482,10 @@
   document.body.style.setProperty('--ui-scale', String(S.scale || 1));
     $('#wallpaper').style.filter = 'brightness(' + (0.55 + S.brightness * .55) + ')';
     renderClock();
-    renderDesktopIcons();
-    renderDock();
-    syncWindows();
-    renderLauncher();
-    renderQS();
-    renderNotifications();
-    renderOverview();
+    if (!MODE || MODE === 'desktop') { renderDesktopIcons(); syncWindows(); renderOverview(); }
+    if (!MODE || MODE === 'dock' || MODE === 'desktop') renderDock();
+    if (!MODE || MODE === 'launcher') renderLauncher();
+    if (!MODE || MODE === 'shade') renderNotifications();
     $$('.statusbar [data-icon]').forEach(function (e) {});
     I.hydrate(document);
     // notify app-level listeners
@@ -519,30 +596,55 @@
     var pinned = S.pinned.filter(function (id) { return appById(id); });
     var extra = running.filter(function (w) { return pinned.indexOf(w.app) === -1; }).map(function (w) { return w.app; });
     var list = pinned.concat(extra.filter(function (x, i, a) { return a.indexOf(x) === i; }));
+    if (list.indexOf('settings') === -1) list.push('settings');
     var html = '<button class="dock-item" id="dock-launcher" title="App launcher (Super)">' + I.svg('grid', 23) + '</button>' +
       '<span class="dock-sep"></span>' +
       list.map(function (id) {
         var w = running.filter(function (x) { return x.app === id; })[0];
-        return '<button class="dock-item ' + (w ? 'running' : '') + ' ' + (w && isFocused(w) && w.state !== 'minimized' ? 'active' : '') + '" data-app="' + id + '" title="' + esc(appName(id)) + '">' +
+        var isRun = !!w || !!REAL_RUNNING[id];
+        return '<button class="dock-item ' + (isRun ? 'running' : '') + ' ' + (w && isFocused(w) && w.state !== 'minimized' ? 'active' : '') + '" data-app="' + id + '" title="' + esc(appName(id)) + '">' +
           I.appArt(id, 28) + '</button>';
-      }).join('') +
-      '<span class="dock-sep"></span><button class="dock-item" id="dock-overview" title="Activities (Super+W)">' + I.svg('widgets', 22) + '</button>' +
-      '<div class="dock-tray"><button id="dock-backend" title="Session backend">' + I.svg('cpu', 14) + ' <span>' + (API.backend === 'rust' ? 'Rust core' : 'Preview') + '</span></button></div>';
+      }).join('');
     $('#dock').innerHTML = html;
     I.hydrate($('#dock'));
   }
 
+  function realAppButton(a) {
+    var letter = esc((a.name || '?').trim().charAt(0).toUpperCase());
+    var glyph = a.icon
+      ? '<img class="la-img" src="' + API.iconUrl(a.icon) + '" alt="" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'\'">' +
+        '<span class="la-letter" style="display:none">' + letter + '</span>'
+      : '<span class="la-letter">' + letter + '</span>';
+    return '<button class="launcher-app" data-desktop="' + esc(a.id) + '" title="' + esc(a.name) + '">' +
+      '<span class="la-glyph">' + glyph + '</span><span>' + esc(a.name) + '</span></button>';
+  }
+
   function renderLauncher() {
     var el = $('#launcher');
-    el.classList.toggle('hidden', !S.show_launcher);
-    if (!S.show_launcher) return;
+    el.classList.toggle('hidden', !S.show_launcher && MODE !== 'launcher');
+    if (!S.show_launcher && MODE !== 'launcher') return;
     var q = ($('#launcher-input').value || '').toLowerCase();
-    var list = APPS.filter(function (a) { return !q || (a.name + ' ' + a.id + ' ' + a.summary).toLowerCase().indexOf(q) !== -1; });
-    $('#launcher-grid').innerHTML = list.map(function (a) {
-      return '<button class="launcher-app" data-app="' + a.id + '"><span class="la-glyph">' + I.appArt(a.id, 34) + '</span><span>' + esc(a.name) + '</span></button>';
-    }).join('') || '<div class="launcher-empty">No apps match “' + esc(q) + '”</div>';
-    $('#launcher-count').textContent = list.length + ' apps';
-    $('#launcher-title').textContent = q ? 'Search results' : 'All apps';
+    var html = '', count = 0;
+    if (X11) {
+      var mine = APPS.filter(function (a) { return a.id === 'settings' || a.id === 'software'; })
+        .filter(function (a) { return !q || (a.name + ' ' + a.id).toLowerCase().indexOf(q) !== -1; });
+      html += mine.map(function (a) {
+        return '<button class="launcher-app" data-app="' + a.id + '"><span class="la-glyph">' + I.appArt(a.id, 34) + '</span><span>' + esc(a.name) + '</span></button>';
+      }).join('');
+      count += mine.length;
+      var real = REAL_APPS.filter(function (a) { return !q || (a.name + ' ' + a.id).toLowerCase().indexOf(q) !== -1; });
+      html += real.map(realAppButton).join('');
+      count += real.length;
+    } else {
+      var list = APPS.filter(function (a) { return !q || (a.name + ' ' + a.id + ' ' + a.summary).toLowerCase().indexOf(q) !== -1; });
+      html = list.map(function (a) {
+        return '<button class="launcher-app" data-app="' + a.id + '"><span class="la-glyph">' + I.appArt(a.id, 34) + '</span><span>' + esc(a.name) + '</span></button>';
+      }).join('');
+      count = list.length;
+    }
+    $('#launcher-grid').innerHTML = html || '<div class="launcher-empty">No apps match “' + esc(q) + '”</div>';
+    $('#launcher-count').textContent = count + ' apps';
+    $('#launcher-title').textContent = q ? 'Search results' : (X11 ? 'Installed apps' : 'All apps');
   }
 
   var QS_TILES = [
@@ -555,7 +657,7 @@
     $('#qs-brightness').value = Math.round(S.brightness * 100);
     $('#qs-volume').value = Math.round(S.volume * 100);
     $('#notif-dnd').classList.toggle('on', !!S.toggles.dnd);
-    $('#sb-record').classList.toggle('active', !!S.toggles.screen_record);
+    var srec = $('#sb-record'); if (srec) srec.classList.toggle('active', !!S.toggles.screen_record);
     $('#qs-tiles').innerHTML = QS_TILES.map(function (t) {
       var on = !!S.toggles[t[0]];
       return '<button class="qs-tile ' + (on ? 'on' : '') + '" data-tile="' + t[0] + '"><span class="qt-icon">' + I.svg(t[2], 18) + '</span>' + t[1] + '</button>';
@@ -607,12 +709,10 @@
   }
 
   function closePanels() {
-    $('#qs').classList.add('hidden');
-    $('#notif-panel').classList.add('hidden');
-    $('#context-menu').classList.add('hidden');
-    $('#power-menu').classList.add('hidden');
-    $('#calendar-pop').classList.add('hidden');
-    $('#search-results').classList.add('hidden');
+    ['#qs', '#notif-panel', '#context-menu', '#power-menu', '#calendar-pop',
+     '#search-results', '#wifi-pop', '#audio-pop', '#battery-pop', '#power-pop'].forEach(function (sel) {
+      var el = $(sel); if (el) el.classList.add('hidden');
+    });
   }
   function togglePanel(id) {
     var el = $(id), wasHidden = el.classList.contains('hidden');
@@ -675,6 +775,7 @@
   }
 
   function power(action) {
+    if (X11) { API.cmd(action); return; }
     if (action === 'lock') {
       var l = $('#lock-screen');
       l.innerHTML = '<div class="lock-clock" id="lock-clock"></div><div class="lock-date" id="lock-date"></div><img src="assets/logo.svg" alt=""><div style="font-size:12px;color:#8f9dc4;margin-top:10px">Click anywhere to unlock</div>';
@@ -685,96 +786,20 @@
     }
     if (action === 'reboot') { location.reload(); return; }
     if (action === 'shutdown') { document.body.innerHTML = '<div style="position:fixed;inset:0;background:#000;color:#555;display:grid;place-items:center;font:13px sans-serif">It is now safe to turn off your computer.</div>'; return; }
-    if (action === 'logout') { $('#desktop').classList.add('hidden'); showBoot(); return; }
-  }
-
-  // ------------------------------------------------------------- boot/setup
-  var bootSteps = [
-    'Starting session services…', 'Loading Rust core…', 'Mounting Minerva VFS…',
-    'Initialising window manager…', 'Applying appearance…', 'Starting shell…'
-  ];
-  function showBoot() {
-    var boot = $('#boot'); boot.classList.remove('hidden');
-    var i = 0;
-    var t = setInterval(function () {
-      i++;
-      $('#boot-bar').style.width = Math.min(100, i * 17) + '%';
-      $('#boot-status').textContent = bootSteps[Math.min(i, bootSteps.length - 1)];
-      if (i >= 6) { clearInterval(t); setTimeout(finishBoot, 350); }
-    }, 260);
-    boot.dataset.timer = String(t);
-  }
-  function finishBoot() {
-    $('#boot').classList.add('hidden');
-    $('#desktop').classList.remove('hidden');
-    // The setup wizard is available at ?setup=1 (and from the README) so a
-    // preview lands straight on the desktop instead of behind a wizard.
-    try {
-      if (new URLSearchParams(location.search).has('setup')) showSetup();
-      localStorage.setItem('minerva.setup.done', '1');
-    } catch (e) {}
-    render();
-  }
-
-  var setupStep = 1;
-  function showSetup() {
-    $('#setup').classList.remove('hidden');
-    setupStep = 1;
-    $('#setup-langs').innerHTML = [['English (US)', '🇺🇸', 'en'], ['Bahasa Indonesia', '🇮🇩', 'id'], ['Deutsch', '🇩🇪', 'de'], ['日本語', '🇯🇵', 'ja']].map(function (l, i) {
-      return '<button class="setup-opt ' + (i === 0 ? 'selected' : '') + '" data-lang="' + l[2] + '"><span class="flag">' + l[1] + '</span><span><strong>' + l[0] + '</strong><small>Keyboard: ' + l[2].toUpperCase() + '</small></span></button>';
-    }).join('');
-    $('#setup-themes').innerHTML = [['swirl', 'Midnight swirl', 'Dark wallpaper, light panels'], ['light', 'Daylight', 'Light wallpaper, light panels'], ['aurora', 'Aurora', 'Blue-green night sky']].map(function (t, i) {
-      return '<button class="setup-opt ' + (i === 0 ? 'selected' : '') + '" data-wall="' + t[0] + '"><span class="flag" style="width:42px;height:30px;border-radius:6px;background:url(assets/wallpapers/' + t[0] + '.svg) center/cover"></span><span><strong>' + t[1] + '</strong><small>' + t[2] + '</small></span></button>';
-    }).join('');
-    updateSetup();
-  }
-  function updateSetup() {
-    $$('.setup-step').forEach(function (s) { s.classList.toggle('hidden', Number(s.dataset.step) !== setupStep); });
-    $('#setup-next').textContent = setupStep === 3 ? 'Start using Minerva' : 'Next';
-  }
-  function closeSetup() {
-    $('#setup').classList.add('hidden');
-    try { localStorage.setItem('minerva.setup.done', '1'); } catch (e) {}
+    if (action === 'logout') { location.reload(); return; }
   }
 
   // ---------------------------------------------------------------- events
   function wire() {
-    // boot
-    $('#boot-skip').addEventListener('click', function () {
-      clearInterval(Number($('#boot').dataset.timer));
-      $('#boot-bar').style.width = '100%';
-      setTimeout(finishBoot, 120);
-    });
-    // setup
-    $('#setup-langs').addEventListener('click', function (e) {
-      var b = e.target.closest('[data-lang]'); if (!b) return;
-      $$('#setup-langs .setup-opt').forEach(function (x) { x.classList.remove('selected'); });
-      b.classList.add('selected');
-    });
-    $('#setup-themes').addEventListener('click', function (e) {
-      var b = e.target.closest('[data-wall]'); if (!b) return;
-      $$('#setup-themes .setup-opt').forEach(function (x) { x.classList.remove('selected'); });
-      b.classList.add('selected');
-      dispatch({ type: 'set_wallpaper', value: b.dataset.wall });
-    });
-    $('#setup-next').addEventListener('click', function () {
-      if (setupStep < 3) { setupStep++; updateSetup(); }
-      else { closeSetup(); toast('Welcome to Debian Minerva'); }
-    });
-    $('#setup-skip').addEventListener('click', function () { closeSetup(); });
-
-    // statusbar
-    $('#sb-clock').addEventListener('click', function () { togglePanel('#calendar-pop'); });
-    $('#sb-notif').addEventListener('click', function () { togglePanel('#notif-panel'); });
-    ['#sb-wifi', '#sb-battery', '#sb-lang', '#sb-sync', '#sb-record', '#sb-location'].forEach(function (s) {
-      $(s).addEventListener('click', function (e) {
-        if (s === '#sb-record') { dispatch({ type: 'toggle', key: 'screen_record' }); toast(S.toggles.screen_record ? 'Screen recording started' : 'Screen recording stopped'); return; }
-        if (s === '#sb-location') { dispatch({ type: 'toggle', key: 'location' }); return; }
-        togglePanel('#qs');
-      });
-    });
+    // statusbar — every icon opens its own dedicated popover with real data
+    $('#sb-clock').addEventListener('click', function () { popover('calendar', '#calendar-pop'); });
+    $('#sb-notif').addEventListener('click', function () { if (X11) openPanelGuarded('shade'); else togglePanel('#notif-panel'); });
+    $('#sb-wifi').addEventListener('click', function () { popover('wifi', '#wifi-pop'); });
+    $('#sb-audio').addEventListener('click', function () { popover('audio', '#audio-pop'); });
+    $('#sb-battery').addEventListener('click', function () { popover('battery', '#battery-pop'); });
     $('#sb-power').addEventListener('click', function (e) {
       e.stopPropagation();
+      if (X11) { openPanelGuarded('power'); return; }
       showMenu([
         '<button class="ctx-item" data-p="lock">' + I.svg('lock', 16) + 'Lock screen</button>',
         '<button class="ctx-item" data-p="logout">' + I.svg('logout', 16) + 'Log out</button>',
@@ -783,7 +808,7 @@
         '<button class="ctx-item" data-p="shutdown">' + I.svg('power', 16) + 'Shut down</button>'
       ].join(''), window.innerWidth - 230, 42, '#power-menu');
     });
-    $('#sb-activities').addEventListener('click', function () { dispatch({ type: 'overview' }); });
+    $('#sb-activities').addEventListener('click', function () { if (X11) openPanelGuarded('launcher'); else dispatch({ type: 'overview' }); });
     $('#qs-power').addEventListener('click', function () { power('shutdown'); });
 
     // quick settings
@@ -803,13 +828,16 @@
       var b = e.target.closest('[data-dismiss]'); if (b) dispatch({ type: 'dismiss_notification', id: Number(b.dataset.dismiss) });
     });
     $('#notif-clear').addEventListener('click', function () { dispatch({ type: 'clear_notifications' }); });
-    $('#notif-close').addEventListener('click', function () { $('#notif-panel').classList.add('hidden'); });
+    $('#notif-close').addEventListener('click', function () { if (MODE === 'shade') { PanelWin.selfClose(); } else { $('#notif-panel').classList.add('hidden'); } });
     $('#notif-dnd').addEventListener('click', function () { dispatch({ type: 'toggle', key: 'dnd' }); });
 
     // dock
     $('#dock').addEventListener('click', function (e) {
-      if (e.target.closest('#dock-launcher')) { dispatch({ type: 'launcher' }); setTimeout(function () { $('#launcher-input').focus(); }, 30); return; }
-      if (e.target.closest('#dock-overview')) { dispatch({ type: 'overview' }); return; }
+      if (e.target.closest('#dock-launcher')) {
+        if (X11) openPanelGuarded('launcher');
+        else { dispatch({ type: 'launcher' }); setTimeout(function () { $('#launcher-input').focus(); }, 30); }
+        return;
+      }
       var b = e.target.closest('[data-app]'); if (!b) return;
       var w = S.windows.filter(function (x) { return x.app === b.dataset.app && x.workspace === S.active_workspace; })[0];
       if (w && isFocused(w) && w.state !== 'minimized') dispatch({ type: 'minimize', id: w.id });
@@ -819,9 +847,25 @@
     // launcher
     $('#launcher-input').addEventListener('input', renderLauncher);
     $('#launcher-input').addEventListener('keydown', function (e) {
-      if (e.key === 'Enter') { var first = $('#launcher-grid [data-app]'); if (first) openApp(first.dataset.app); }
+      if (e.key === 'Enter') {
+        var first = $('#launcher-grid [data-app], #launcher-grid [data-desktop]');
+        if (!first) return;
+        if (first.dataset.desktop) { API.execDesktop(first.dataset.desktop).then(function (r) { if (r && r.ok) refreshRunning(); if (MODE === 'launcher') PanelWin.selfClose(); }); }
+        else openApp(first.dataset.app);
+      }
     });
-    $('#launcher-grid').addEventListener('click', function (e) { var b = e.target.closest('[data-app]'); if (b) openApp(b.dataset.app); });
+    $('#launcher-grid').addEventListener('click', function (e) {
+      var d = e.target.closest('[data-desktop]');
+      if (d) {
+        API.execDesktop(d.dataset.desktop).then(function (r) {
+          if (r && r.ok) refreshRunning();
+          else if (r && !r.ok) toast('Could not launch ' + d.dataset.desktop);
+          if (MODE === 'launcher') PanelWin.selfClose();
+        });
+        return;
+      }
+      var b = e.target.closest('[data-app]'); if (b) openApp(b.dataset.app);
+    });
 
     // desktop icons + search + context menu
     $('#desktop-icons').addEventListener('click', function (e) { var b = e.target.closest('[data-app]'); if (b) openApp(b.dataset.app); });
@@ -901,6 +945,7 @@
         closePanels(); return;
       }
       if (typing) return;
+      if (X11) return; // openbox owns Super, Alt+Tab, Super+D/W in a real session
       if (e.key === 'Meta' || (e.key === 'Super')) { e.preventDefault(); dispatch({ type: 'launcher' }); setTimeout(function () { if (S.show_launcher) $('#launcher-input').focus(); }, 30); return; }
       if (e.key.toLowerCase() === 'w' && (e.metaKey || e.superKey)) { e.preventDefault(); dispatch({ type: 'overview' }); return; }
       if (e.key.toLowerCase() === 'd' && (e.metaKey || e.superKey)) { e.preventDefault(); dispatch({ type: 'minimize_all' }); return; }
@@ -954,6 +999,8 @@
     wire();
     I.hydrate(document);
     await API.probe();
+    X11 = API.sessionMode === 'x11';
+    document.body.classList.toggle('session-x11', X11);
 
     // When the Rust daemon owns the state, a terminal command may mutate the
     // session server-side (e.g. `open settings`). Reconcile once afterwards.
@@ -977,19 +1024,25 @@
         if (apps && apps.length) APPS.length = 0, apps.forEach(function (a) { APPS.push(a); });
       } catch (e) {}
     }
+    if (X11) {
+      try { REAL_APPS = await API.desktopApps(); } catch (e) {}
+      startPolling();
+      refreshRunning();
+    }
     render();
     setInterval(renderClock, 1000);
     initBattery();
-    showBoot();
-    // A couple of welcome windows, like a real session with apps open.
-    setTimeout(function () {
-      if (!$('#setup').classList.contains('hidden')) return;
-      if (S.windows.length === 0 && !localStorage.getItem('minerva.greeted')) {
-        try { localStorage.setItem('minerva.greeted', '1'); } catch (e) {}
-        dispatch({ type: 'launch', app: 'settings' });
-      }
-    }, 3200);
+    if (window.PanelWin) PanelWin.init(MODE);
   }
+
+  // Panel windows (panelwin.js) drive their content through this surface.
+  window.MinervaShell = {
+    dispatch: dispatch, toast: toast, power: power, openApp: openApp,
+    renderCalendar: renderCalendar,
+    state: function () { return S; },
+    mode: function () { return MODE; },
+    isX11: function () { return X11; }
+  };
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start);
   else start();

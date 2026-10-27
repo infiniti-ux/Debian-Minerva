@@ -10,6 +10,7 @@
 //! JSON API. No external crates: the whole DE system layer is Rust + std.
 
 mod core;
+mod exec;
 mod http;
 mod json;
 mod services;
@@ -28,7 +29,7 @@ const BANNER: &str = r#"
     | |/ /  __/ (_| | | (_| | | | | (_| | |  | | | | | |  __/ / / \ V /| | | (_| |
     |___/ \___|\__, |_|\__,_|_| |_|\__,_|_|  |_|_|_| |_|\___| \_/   \_/ |_|  \__,_|
                 __/ |
-               |___/     Debian Minerva · Rust desktop session · v0.1.0
+               |___/     Debian Minerva · Rust desktop environment · v0.3.0
 "#;
 
 fn main() {
@@ -84,7 +85,8 @@ fn main() {
 
     let state = Arc::new(Mutex::new(SessionState::load(&data_dir)));
     let vfs = Arc::new(Vfs::new(&data_dir));
-    let server = http::Server { port, bind, token, web_root, data_dir, state, vfs };
+    let exec = Arc::new(exec::Exec::from_env(port, token.clone()));
+    let server = http::Server { port, bind, token, web_root, data_dir, state, vfs, exec };
     if let Err(e) = server.run() {
         eprintln!("minerva: server error: {}", e);
         std::process::exit(1);
@@ -98,6 +100,8 @@ fn print_help() {
     println!("    -p, --port <PORT>       HTTP port (default 8080)");
     println!("        --bind <ADDR>       bind address (default 127.0.0.1)");
     println!("        --token <TOKEN>     require X-Minerva-Token on /api/v1/* (except health)");
+    println!("    env MINERVA_SESSION_MODE=x11|kiosk|dev, MINERVA_BROWSER, MINERVA_SESSION_PID");
+    println!("    real-system API: POST /api/v1/exec, GET /api/v1/desktop-apps, /api/v1/icon");
     println!("        --web-root <DIR>    shell assets (default ./web)");
     println!("        --data-dir <DIR>    session state (default ~/.config/debian-minerva)");
     println!("        --self-test         run the reducer/parser tests and print JSON");
