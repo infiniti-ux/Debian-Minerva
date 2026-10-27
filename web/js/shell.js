@@ -268,13 +268,14 @@
     delete RECORDS[id];
   }
 
+  var dragRaf = 0;
   function buildWindow(w) {
     var def = appById(w.app);
     var el = document.createElement('div');
     el.className = 'win';
     el.dataset.id = w.id;
     el.innerHTML =
-      '<div class="win-titlebar"><span class="wt-icon">' + I.svg(def.icon, 17) + '</span>' +
+      '<div class="win-titlebar"><span class="wt-icon">' + I.appArt(w.app, 20) + '</span>' +
       '<span class="wt-title">' + esc(w.title) + '</span><span class="win-controls">' +
       '<button class="win-btn" data-c="min" title="Minimise">' + I.svg('minus', 14) + '</button>' +
       '<button class="win-btn" data-c="max" title="Maximise">' + I.svg('square', 14) + '</button>' +
@@ -342,7 +343,13 @@
         if (mode === 'ns' || mode === 'both') w.h = Math.max(220, orig.h + dy);
         w.state = 'normal';
       }
-      paintWindow(w);
+      if (!dragRaf) {
+        dragRaf = requestAnimationFrame(function () {
+          dragRaf = 0;
+          var ww = findWin(id);
+          if (ww) paintWindow(ww);
+        });
+      }
     });
     el.addEventListener('pointerup', function (e) {
       if (!mode) return;
@@ -411,6 +418,64 @@
     });
   }
 
+
+  // ---------------------------------------------------------------- battery
+  // The Rust daemon reads /sys/class/power_supply; the browser preview falls
+  // back to the Battery Status API. The icon fill follows the theme accent and
+  // turns amber/red when the level is low.
+  var battery = { level: 0.94, charging: false, present: false };
+  function setBattery(b) {
+    if (!b) return;
+    if (typeof b.level === 'number' && isFinite(b.level)) battery.level = clamp(b.level, 0, 1);
+    if (typeof b.charging === 'boolean') battery.charging = b.charging;
+    if (typeof b.present === 'boolean') battery.present = b.present;
+    renderBattery();
+  }
+  function batteryFill() {
+    if (battery.charging) return '#22c55e';
+    if (battery.level <= 0.20) return '#ef4444';
+    if (battery.level <= 0.40) return '#f59e0b';
+    return getComputedStyle(document.body).getPropertyValue('--accent').trim() || '#a80030';
+  }
+  function renderBattery() {
+    var holder = $('#sb-battery [data-battery]');
+    if (!holder) return;
+    var pct = Math.round(battery.level * 100);
+    var w = Math.max(2, Math.round(battery.level * 15));
+    var light = document.body.classList.contains('wallpaper-light');
+    var outline = light ? 'rgba(20,22,34,.55)' : 'rgba(255,255,255,.72)';
+    holder.innerHTML = '<svg class="battery-svg" viewBox="0 0 26 14" width="26" height="14" aria-hidden="true">' +
+      '<rect x="1" y="1.5" width="21" height="11" rx="3" fill="none" stroke="' + outline + '" stroke-width="1.3"/>' +
+      '<rect x="23.4" y="5" width="2.2" height="4" rx="1.1" fill="' + outline + '"/>' +
+      '<rect x="3" y="3.5" width="' + w + '" height="7" rx="1.8" fill="' + batteryFill() + '"/>' +
+      (battery.charging ? '<path d="M13 2.5l-4 5.2h3l-1 3.8 4.6-5.4h-3z" fill="#fff" stroke="none"/>' : '') +
+      '</svg>';
+    $('#sb-batt-num').textContent = pct + '%' + (battery.charging ? '+' : '');
+    $('#sb-battery').title = 'Battery ' + pct + '%' + (battery.charging ? ' (charging)' : '');
+  }
+  function initBattery() {
+    // native daemon
+    if (API.backend === 'rust') {
+      API.getSystem().then(function (sys) {
+        if (!sys) return;
+        setBattery({ level: sys.battery_level, charging: sys.battery_charging, present: sys.battery_present });
+      }).catch(function () {});
+    }
+    // browser fallback / live updates
+    try {
+      if (navigator.getBattery) {
+        navigator.getBattery().then(function (b) {
+          battery.present = true;
+          function upd() { setBattery({ level: b.level, charging: b.charging, present: true }); }
+          upd();
+          b.addEventListener('levelchange', upd);
+          b.addEventListener('chargingchange', upd);
+        }).catch(function () {});
+      }
+    } catch (e) {}
+    renderBattery();
+  }
+
   function hexA(hex, a) {
     var h = hex.replace('#', '');
     if (h.length === 3) h = h.split('').map(function (c) { return c + c; }).join('');
@@ -439,13 +504,13 @@
     $('#qs-clock').textContent = full;
     $('#qs-date').textContent = d.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' });
     $('#notif-dot').classList.toggle('hidden', S.notifications.length === 0);
-    $('#sb-batt-num').textContent = Math.round(72 + (S.brightness * 26)) + '%';
+    renderBattery();
   }
 
   function renderDesktopIcons() {
     var items = [['files', 'My Files'], ['software', 'Software'], ['settings', 'Settings'], ['help', 'About']];
     $('#desktop-icons').innerHTML = items.map(function (it) {
-      return '<button class="desktop-icon" data-app="' + it[0] + '"><span class="di-glyph">' + I.svg(appIcon(it[0]), 28) + '</span><span>' + it[1] + '</span></button>';
+      return '<button class="desktop-icon" data-app="' + it[0] + '"><span class="di-glyph">' + I.appArt(it[0], 32) + '</span><span>' + it[1] + '</span></button>';
     }).join('');
   }
 
@@ -459,7 +524,7 @@
       list.map(function (id) {
         var w = running.filter(function (x) { return x.app === id; })[0];
         return '<button class="dock-item ' + (w ? 'running' : '') + ' ' + (w && isFocused(w) && w.state !== 'minimized' ? 'active' : '') + '" data-app="' + id + '" title="' + esc(appName(id)) + '">' +
-          I.svg(appIcon(id), 23) + '</button>';
+          I.appArt(id, 28) + '</button>';
       }).join('') +
       '<span class="dock-sep"></span><button class="dock-item" id="dock-overview" title="Activities (Super+W)">' + I.svg('widgets', 22) + '</button>' +
       '<div class="dock-tray"><button id="dock-backend" title="Session backend">' + I.svg('cpu', 14) + ' <span>' + (API.backend === 'rust' ? 'Rust core' : 'Preview') + '</span></button></div>';
@@ -474,7 +539,7 @@
     var q = ($('#launcher-input').value || '').toLowerCase();
     var list = APPS.filter(function (a) { return !q || (a.name + ' ' + a.id + ' ' + a.summary).toLowerCase().indexOf(q) !== -1; });
     $('#launcher-grid').innerHTML = list.map(function (a) {
-      return '<button class="launcher-app" data-app="' + a.id + '"><span class="la-glyph">' + I.svg(a.icon, 28) + '</span><span>' + esc(a.name) + '</span></button>';
+      return '<button class="launcher-app" data-app="' + a.id + '"><span class="la-glyph">' + I.appArt(a.id, 34) + '</span><span>' + esc(a.name) + '</span></button>';
     }).join('') || '<div class="launcher-empty">No apps match “' + esc(q) + '”</div>';
     $('#launcher-count').textContent = list.length + ' apps';
     $('#launcher-title').textContent = q ? 'Search results' : 'All apps';
@@ -526,7 +591,7 @@
     var wins = S.windows.filter(function (w) { return !q || (appName(w.app) + ' ' + w.title).toLowerCase().indexOf(q) !== -1; });
     $('#ov-windows').innerHTML = wins.map(function (w) {
       return '<div class="ov-win" data-win="' + w.id + '" draggable="true">' +
-        '<div class="ov-win-bar">' + I.svg(appIcon(w.app), 14) + esc(w.title) + '</div>' +
+        '<div class="ov-win-bar">' + I.appArt(w.app, 18) + esc(w.title) + '</div>' +
         '<div class="ov-win-body">Workspace ' + (w.workspace + 1) + ' · ' + esc(w.state) + '</div>' +
         '<button class="icon-btn ov-win-close" data-close="' + w.id + '">' + I.svg('close', 13) + '</button></div>';
     }).join('') || '<p style="color:#aab3d0;font-size:12px">No open windows</p>';
@@ -701,11 +766,10 @@
     // statusbar
     $('#sb-clock').addEventListener('click', function () { togglePanel('#calendar-pop'); });
     $('#sb-notif').addEventListener('click', function () { togglePanel('#notif-panel'); });
-    ['#sb-wifi', '#sb-battery', '#sb-lang', '#sb-assistant', '#sb-sync', '#sb-record', '#sb-location'].forEach(function (s) {
+    ['#sb-wifi', '#sb-battery', '#sb-lang', '#sb-sync', '#sb-record', '#sb-location'].forEach(function (s) {
       $(s).addEventListener('click', function (e) {
         if (s === '#sb-record') { dispatch({ type: 'toggle', key: 'screen_record' }); toast(S.toggles.screen_record ? 'Screen recording started' : 'Screen recording stopped'); return; }
         if (s === '#sb-location') { dispatch({ type: 'toggle', key: 'location' }); return; }
-        if (s === '#sb-assistant') { toast('Minerva assistant: press Super and type to search'); return; }
         togglePanel('#qs');
       });
     });
@@ -878,7 +942,7 @@
     if (!q) { el.classList.add('hidden'); return; }
     var matches = APPS.filter(function (a) { return (a.name + ' ' + a.id + ' ' + a.summary).toLowerCase().indexOf(q) !== -1; });
     el.innerHTML = matches.slice(0, 8).map(function (a) {
-      return '<button class="sr-item" data-app="' + a.id + '">' + I.svg(a.icon, 20) + '<span>' + esc(a.name) + '</span><small>' + esc(a.group) + '</small></button>';
+      return '<button class="sr-item" data-app="' + a.id + '">' + I.appArt(a.id, 22) + '<span>' + esc(a.name) + '</span><small>' + esc(a.group) + '</small></button>';
     }).join('') || '<div class="sr-item muted">No results for “' + esc(q) + '”</div>';
     I.hydrate(el);
     el.classList.remove('hidden');
@@ -915,6 +979,7 @@
     }
     render();
     setInterval(renderClock, 1000);
+    initBattery();
     showBoot();
     // A couple of welcome windows, like a real session with apps open.
     setTimeout(function () {

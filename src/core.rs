@@ -62,7 +62,7 @@ pub struct AppDef {
     pub summary: &'static str,
 }
 
-/// Built-in application catalogue. No Google/Chrome/Play/Gemini branding —
+/// Built-in application catalogue. No Google/Chrome/Play branding —
 /// everything is Debian Minerva native.
 pub fn catalog() -> Vec<AppDef> {
     vec![

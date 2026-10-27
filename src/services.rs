@@ -180,7 +180,56 @@ fn cmd_output(program: &str, args: &[&str]) -> String {
         .unwrap_or_default()
 }
 
+/// Read the first battery exposed by the kernel. Returns
+/// `(level 0.0..=1.0, charging, present)`. Desktop machines without a
+/// battery report `present == false` and the status bar hides the glyph.
+fn battery_info() -> (f64, bool, bool) {
+    let dir = match fs::read_dir("/sys/class/power_supply") {
+        Ok(d) => d,
+        Err(_) => return (1.0, false, false),
+    };
+    let mut best: Option<(f64, bool)> = None;
+    for entry in dir.flatten() {
+        let name = entry.file_name();
+        let name = name.to_string_lossy().into_owned();
+        if !name.starts_with("BAT") && !name.to_lowercase().contains("battery") {
+            continue;
+        }
+        let base: PathBuf = entry.path();
+        let level = fs::read_to_string(base.join("capacity"))
+            .ok()
+            .and_then(|v| v.trim().parse::<f64>().ok())
+            .map(|v| (v / 100.0).max(0.0).min(1.0))
+            .or_else(|| {
+                let now = fs::read_to_string(base.join("energy_now"))
+                    .ok()
+                    .and_then(|v| v.trim().parse::<f64>().ok());
+                let full = fs::read_to_string(base.join("energy_full"))
+                    .ok()
+                    .and_then(|v| v.trim().parse::<f64>().ok());
+                match (now, full) {
+                    (Some(n), Some(f)) if f > 0.0 => Some((n / f).max(0.0).min(1.0)),
+                    _ => None,
+                }
+            });
+        let status = fs::read_to_string(base.join("status"))
+            .unwrap_or_default()
+            .trim()
+            .to_lowercase();
+        let charging = status == "charging" || status == "full";
+        if let Some(l) = level {
+            best = Some((l, charging));
+            break;
+        }
+    }
+    match best {
+        Some((l, c)) => (l, c, true),
+        None => (1.0, false, false),
+    }
+}
+
 pub fn system_json() -> Value {
+    let battery = battery_info();
     let meminfo = read_trim("/proc/meminfo");
     let mut total_kb = 0u64;
     let mut avail_kb = 0u64;
@@ -229,6 +278,9 @@ pub fn system_json() -> Value {
         ("de", Value::s(crate::core::DE_NAME)),
         ("de_version", Value::s(crate::core::VERSION)),
         ("rustc", Value::s(env!("MINERVA_RUSTC_VERSION"))),
+        ("battery_level", Value::n(battery.0)),
+        ("battery_charging", Value::Bool(battery.1)),
+        ("battery_present", Value::Bool(battery.2)),
     ])
 }
 
