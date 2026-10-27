@@ -223,7 +223,7 @@ impl Exec {
                 .map(|t| t.chars().take_while(|c| c.is_ascii_hexdigit()).collect::<String>())
                 .filter(|h| !h.is_empty())
             {
-                let out = run_out(&format!("xprop -id 0x{} _NET_WM_NAME WM_CLASS 2>/dev/null", hex));
+                let out = run_out(&format!("xprop -id 0x{} _NET_WM_NAME WM_CLASS _NET_WM_DESKTOP 2>/dev/null", hex));
                 let title = Self::xprop_first(&out, "_NET_WM_NAME");
                 let class = Self::xprop_second(&out, "WM_CLASS");
                 // the fullscreen shell surface is not a taskbar entry
@@ -231,11 +231,14 @@ impl Exec {
                 if title.is_empty() && class.is_empty() { continue; }
                 let app = Self::guess_app(&class);
                 if !app.is_empty() && !apps.contains(&app) { apps.push(app.clone()); }
+                let raw_desk = Self::xprop_num(&out, "_NET_WM_DESKTOP");
+                let desktop = if raw_desk < 0 || raw_desk > 0xFFFFFFF { -1 } else { raw_desk };
                 wins.push(Value::obj(vec![
                     ("id".into(), Value::s(hex.clone())),
                     ("title".into(), Value::s(title)),
                     ("class".into(), Value::s(class)),
                     ("app".into(), Value::s(app)),
+                    ("desktop".into(), Value::n(desktop as f64)),
                     ("focused".into(), Value::Bool(hex == active)),
                 ]));
             }
@@ -245,7 +248,9 @@ impl Exec {
         for (id, _) in l.iter() {
             if !apps.contains(id) { apps.push(id.clone()); }
         }
+        let cur = Self::xprop_num(&run_out("xprop -root _NET_CURRENT_DESKTOP 2>/dev/null"), "_NET_CURRENT_DESKTOP");
         Value::obj(vec![
+            ("current_desktop".into(), Value::n(if cur < 0 { 0 } else { cur } as f64)),
             ("apps".into(), Value::arr(apps.into_iter()
                 .map(|id| Value::obj(vec![("id".into(), Value::s(id)), ("pid".into(), Value::n(0.0))]))
                 .collect())),
@@ -273,6 +278,16 @@ impl Exec {
         }
         Vec::new()
     }
+    fn xprop_num(out: &str, key: &str) -> i64 {
+        for line in out.lines() {
+            if line.starts_with(key) {
+                if let Some(t) = line.split('=').nth(1) {
+                    if let Ok(n) = t.trim().parse::<i64>() { return n; }
+                }
+            }
+        }
+        -2
+    }
     fn xprop_first(out: &str, key: &str) -> String {
         Self::xprop_quoted(out, key).into_iter().next().unwrap_or_default()
     }
@@ -285,7 +300,7 @@ impl Exec {
         let table: &[(&str, &[&str])] = &[
             ("terminal", &["terminal", "xterm", "urxvt", "alacritty", "kitty", "konsole", "tilix", "pty"]),
             ("files", &["pcmanfm", "thunar", "nautilus", "dolphin", "nemo", "caja", "filemanager", "file-manager"]),
-            ("web", &["chromium", "chrome", "firefox", "epiphany", "browser"]),
+            ("browser", &["chromium", "chrome", "firefox", "epiphany"]),
             ("editor", &["mousepad", "gedit", "pluma", "geany", "kate", "xed"]),
             ("images", &["viewnior", "feh", "eog", "gthumb", "sxiv", "nomacs"]),
             ("pdf", &["atril", "evince", "okular", "zathura"]),
@@ -398,6 +413,10 @@ impl Exec {
             }
             "shutdown" => {
                 spawn_detached("systemctl poweroff || pkexec systemctl poweroff");
+                ok_json(vec![])
+            }
+            "suspend" => {
+                spawn_detached("systemctl suspend || pkexec systemctl suspend");
                 ok_json(vec![])
             }
             "showdesktop" => {

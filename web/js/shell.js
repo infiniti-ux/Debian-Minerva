@@ -284,6 +284,7 @@
       REAL_RUNNING = {};
       ((j && j.apps) || []).forEach(function (a) { REAL_RUNNING[a.id] = true; });
       S.realwins = (j && j.windows) || [];
+      S.curdesk = (j && typeof j.current_desktop === 'number') ? j.current_desktop : 0;
       if (!MODE || MODE === 'dock' || MODE === 'desktop') renderDock();
     });
   }
@@ -313,6 +314,7 @@
             dispatch({ type: 'launcher' });
             setTimeout(function () { var li = $('#launcher-input'); if (li) li.focus(); }, 30);
           } else if (ev === 'overview') dispatch({ type: 'overview' });
+          else if (ev === 'settings') dispatch({ type: 'launch', app: 'settings' });
         });
       });
     }, 1200);
@@ -629,7 +631,8 @@
 
   // X11: the dock taskbar mirrors the window manager's real client list.
   function renderDockReal() {
-    var wins = S.realwins || [];
+    var cur = (S.curdesk === undefined) ? 0 : S.curdesk;
+    var wins = (S.realwins || []).filter(function (w) { return w.desktop === -1 || w.desktop === cur; });
     var pinned = S.pinned.filter(function (id) { return appById(id); });
     if (pinned.indexOf('settings') === -1) pinned.push('settings');
     var extra = wins.filter(function (w) { return !w.app || pinned.indexOf(w.app) === -1; });
@@ -841,11 +844,11 @@
     $('#sb-battery').addEventListener('click', function () { popover('battery', '#battery-pop'); });
     $('#sb-power').addEventListener('click', function (e) {
       e.stopPropagation();
-      if (X11) { openPanelGuarded('power'); return; }
       showMenu([
         '<button class="ctx-item" data-p="lock">' + I.svg('lock', 16) + 'Lock screen</button>',
         '<button class="ctx-item" data-p="logout">' + I.svg('logout', 16) + 'Log out</button>',
         '<div class="ctx-sep"></div>',
+        '<button class="ctx-item" data-p="suspend">' + I.svg('moon', 16) + 'Suspend</button>',
         '<button class="ctx-item" data-p="reboot">' + I.svg('refresh', 16) + 'Restart</button>',
         '<button class="ctx-item" data-p="shutdown">' + I.svg('power', 16) + 'Shut down</button>'
       ].join(''), window.innerWidth - 230, 42, '#power-menu');
@@ -882,7 +885,8 @@
       }
       var item = e.target.closest('.dock-item');
       if (X11 && item && item.dataset.win && item.classList.contains('running')) {
-        API.exec({ win_op: 'focus', win_id: item.dataset.win });
+        // click a focused app to minimize it, like a real taskbar
+        API.exec({ win_op: item.classList.contains('active') ? 'minimize' : 'focus', win_id: item.dataset.win });
         return;
       }
       var b = e.target.closest('[data-app]'); if (!b) return;
