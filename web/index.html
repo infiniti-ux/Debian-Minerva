@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0b1020">
+  <title>Debian Minerva</title>
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <link rel="stylesheet" href="css/minerva.css">
+</head>
+<body class="theme-dark wallpaper-swirl">
+
+  <!-- ===================================================== boot splash -->
+  <div id="boot" class="boot">
+    <div class="boot-center">
+      <img class="boot-logo" src="assets/logo.svg" alt="Debian Minerva">
+      <div class="boot-wordmark">Minerva</div>
+      <div class="boot-sub">Debian GNU/Linux · Rust session</div>
+      <div class="boot-progress"><span id="boot-bar"></span></div>
+      <div class="boot-status" id="boot-status">Starting session services…</div>
+    </div>
+    <div class="boot-footer">
+      <span>Debian Minerva 0.1.0</span>
+      <button id="boot-skip" class="text-btn">Skip boot animation</button>
+    </div>
+  </div>
+
+  <!-- ===================================================== first run -->
+  <div id="setup" class="setup hidden">
+    <div class="setup-card">
+      <div class="setup-side">
+        <img src="assets/logo.svg" alt="">
+        <h2>Welcome to<br>Debian Minerva</h2>
+        <p>A Rust-built desktop session for Debian.</p>
+      </div>
+      <div class="setup-body">
+        <div class="setup-step" data-step="1">
+          <h3>Choose your language</h3>
+          <p class="muted">Used for the interface and keyboard layout.</p>
+          <div class="setup-options" id="setup-langs"></div>
+        </div>
+        <div class="setup-step hidden" data-step="2">
+          <h3>Pick a look</h3>
+          <p class="muted">You can change this any time in Settings.</p>
+          <div class="setup-options" id="setup-themes"></div>
+        </div>
+        <div class="setup-step hidden" data-step="3">
+          <h3>You're all set</h3>
+          <p class="muted">A few shortcuts to get you started:</p>
+          <ul class="shortcut-list">
+            <li><kbd>Super</kbd> <span>Open the app launcher</span></li>
+            <li><kbd>Alt</kbd> + <kbd>Tab</kbd> <span>Switch windows</span></li>
+            <li><kbd>Super</kbd> + <kbd>W</kbd> <span>Virtual desktops overview</span></li>
+            <li><kbd>Ctrl</kbd> + <kbd>Alt</kbd> + <kbd>T</kbd> <span>Open a terminal</span></li>
+          </ul>
+        </div>
+        <div class="setup-actions">
+          <button class="text-btn" id="setup-skip">Skip setup</button>
+          <button class="primary-btn" id="setup-next">Next</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================================================== desktop -->
+  <div id="desktop" class="desktop hidden">
+    <div id="wallpaper" class="wallpaper"></div>
+
+    <!-- desktop widgets / icons -->
+    <div id="desktop-layer" class="desktop-layer">
+      <div class="desktop-widget">
+        <div class="dw-date" id="dw-date">Mon, May 11</div>
+        <div class="dw-weather"><span id="dw-temp">27°C</span> <span class="dw-cond">Clear</span></div>
+      </div>
+      <div class="desktop-search" id="desktop-search">
+        <span class="ds-icon" data-icon="search"></span>
+        <input id="ds-input" type="text" placeholder="Search Minerva" autocomplete="off" spellcheck="false">
+        <span class="ds-mic" data-icon="mic"></span>
+        <span class="ds-lens" data-icon="sparkle"></span>
+      </div>
+      <div class="desktop-icons" id="desktop-icons"></div>
+    </div>
+
+    <!-- window layer -->
+    <div id="windows" class="windows"></div>
+
+    <!-- top status bar -->
+    <header id="statusbar" class="statusbar">
+      <div class="sb-left">
+        <button class="sb-item sb-activities" id="sb-activities" title="Activities (Super+W)">
+          <span data-icon="grid"></span><span class="sb-label">Activities</span>
+        </button>
+        <button class="sb-item" id="sb-clock" title="Calendar">
+          <span id="sb-time">7:14</span><span class="sb-sep">·</span><span id="sb-date">Mon, May 11</span>
+        </button>
+      </div>
+      <div class="sb-right">
+        <button class="sb-icon" id="sb-sync" title="Sync" data-tip="Sync"><span data-icon="sync"></span></button>
+        <button class="sb-icon" id="sb-location" title="Location"><span data-icon="location"></span></button>
+        <button class="sb-icon" id="sb-record" title="Screen record"><span data-icon="record"></span></button>
+        <button class="sb-text" id="sb-lang" title="Keyboard layout">EN</button>
+        <button class="sb-icon" id="sb-assistant" title="Minerva assistant"><span data-icon="sparkle"></span></button>
+        <button class="sb-icon" id="sb-notif" title="Notifications"><span data-icon="bell"></span><i id="notif-dot" class="notif-dot hidden"></i></button>
+        <button class="sb-icon" id="sb-wifi" title="Wi-Fi"><span data-icon="wifi"></span></button>
+        <button class="sb-icon" id="sb-battery" title="Battery"><span data-icon="battery"></span><span id="sb-batt-num">94%</span></button>
+        <button class="sb-icon" id="sb-power" title="Power"><span data-icon="power"></span></button>
+      </div>
+    </header>
+
+    <!-- bottom dock / taskbar -->
+    <div id="dock" class="dock"></div>
+
+    <!-- app launcher -->
+    <div id="launcher" class="launcher hidden" role="dialog" aria-label="App launcher">
+      <div class="launcher-search">
+        <span data-icon="search"></span>
+        <input id="launcher-input" type="text" placeholder="Search apps" autocomplete="off" spellcheck="false">
+        <kbd>Esc</kbd>
+      </div>
+      <div class="launcher-section-title" id="launcher-title">All apps</div>
+      <div class="launcher-grid" id="launcher-grid"></div>
+      <div class="launcher-footer"><span>Debian Minerva</span><span id="launcher-count"></span></div>
+    </div>
+
+    <!-- quick settings -->
+    <div id="qs" class="panel qs-panel hidden" role="dialog" aria-label="Quick settings">
+      <div class="qs-head">
+        <div class="qs-clock" id="qs-clock">7:14</div>
+        <div class="qs-date" id="qs-date">Monday, May 11</div>
+        <button class="icon-btn" id="qs-power" title="Power"><span data-icon="power"></span></button>
+      </div>
+      <div class="qs-sliders">
+        <div class="qs-slider-row"><span data-icon="sun"></span><input id="qs-brightness" type="range" min="20" max="100" value="82"></div>
+        <div class="qs-slider-row"><span data-icon="volume"></span><input id="qs-volume" type="range" min="0" max="100" value="65"></div>
+      </div>
+      <div class="qs-tiles" id="qs-tiles"></div>
+      <div class="qs-foot">
+        <button class="text-btn" id="qs-settings"><span data-icon="settings"></span> Settings</button>
+        <button class="text-btn" id="qs-edit">Edit tiles</button>
+      </div>
+    </div>
+
+    <!-- notifications -->
+    <div id="notif-panel" class="panel notif-panel hidden" role="dialog" aria-label="Notifications">
+      <div class="notif-head">
+        <strong>Notifications</strong>
+        <div>
+          <button class="text-btn" id="notif-clear">Clear all</button>
+          <button class="icon-btn" id="notif-close"><span data-icon="close"></span></button>
+        </div>
+      </div>
+      <div class="notif-list" id="notif-list"></div>
+      <div class="notif-foot">Do not disturb <button class="switch" id="notif-dnd"><span></span></button></div>
+    </div>
+
+    <!-- overview / virtual desktops -->
+    <div id="overview" class="overview hidden">
+      <div class="ov-top">
+        <div class="ov-title">Activities</div>
+        <input id="ov-search" class="ov-search" type="text" placeholder="Type to search apps…">
+        <button class="icon-btn" id="ov-close"><span data-icon="close"></span></button>
+      </div>
+      <div class="ov-workspaces" id="ov-workspaces"></div>
+      <div class="ov-windows" id="ov-windows"></div>
+      <div class="ov-hint">Drag a window onto a workspace to move it · <kbd>+</kbd> add workspace</div>
+    </div>
+
+    <!-- context menus -->
+    <div id="context-menu" class="context-menu hidden"></div>
+    <div id="power-menu" class="context-menu hidden"></div>
+    <div id="calendar-pop" class="panel calendar-pop hidden"></div>
+
+    <!-- misc -->
+    <div id="snap-preview" class="snap-preview hidden"></div>
+    <div id="toasts" class="toasts"></div>
+    <div id="search-results" class="search-results hidden"></div>
+    <div id="lock-screen" class="lock-screen hidden"></div>
+  </div>
+
+  <script src="js/icons.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/apps.js"></script>
+  <script src="js/shell.js"></script>
+</body>
+</html>

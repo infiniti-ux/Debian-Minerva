@@ -1,0 +1,17 @@
+Source: debian-minerva
+Section: x11
+Priority: optional
+Maintainer: Debian Minerva contributors <minerva@example.org>
+Build-Depends: debhelper-compat (= 13), cargo, rustc
+Standards-Version: 4.6.2
+Rules-Requires-Root: no
+Homepage: https://github.com/infiniti-ux/Debian-Minerva
+
+Package: debian-minerva
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: Rust desktop session for Debian
+ Debian Minerva is a desktop environment with a Rust session daemon and a
+ lightweight web-based shell. It provides virtual desktops, a dock, an app
+ launcher, quick settings, notifications, a task manager and a set of built-in
+ applications. The daemon has no external crate dependencies.

@@ -1,0 +1,11 @@
+# Rust
+/target/
+**/*.rs.bk
+# Node
+node_modules/
+# Generated previews / local state
+.minerva/
+*.log
+.DS_Store
+# Scratch image search results
+image-search/
