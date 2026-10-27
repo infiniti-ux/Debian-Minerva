@@ -1,3 +1,23 @@
+debian-minerva (0.5.4) unstable; urgency=medium
+
+  * Accuracy pass measured against the Aluminium OS reference frames
+    (07-home-screen-dark, 05-home-screen-app-drawer, 08-quick-settings):
+      - dock is a light bar in BOTH themes (white blur, centred icons),
+        matching the reference dark home;
+      - launcher becomes the centred portrait sheet: lavender card in dark
+        mode, grab-handle dash, inner search pill, centred "All apps"
+        caption, circular white icon badges with small labels;
+      - desktop search pill stays light in dark mode; desktop widget is a
+        plain small date (fake weather line removed);
+      - desktop icons are circular white badges;
+      - status bar left is clock+date only (Activities pill removed —
+        launcher lives on the dock grid and Super); battery shows as a
+        green percentage pill;
+      - popovers / quick settings / notification shade render as lavender
+        cards with white pill tiles in dark mode, active tile solid accent.
+
+ -- Debian Minerva contributors <minerva@example.org>  Wed, 28 Oct 2026 10:05:00 +0700
+
 debian-minerva (0.5.3) unstable; urgency=medium
 
   * UI/UX polish pass against the Aluminium OS reference screenshots:

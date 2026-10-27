@@ -689,7 +689,7 @@
     }
     $('#launcher-grid').innerHTML = html || '<div class="launcher-empty">No apps match “' + esc(q) + '”</div>';
     $('#launcher-count').textContent = count + ' apps';
-    $('#launcher-title').textContent = q ? 'Search results' : (X11 ? 'Installed apps' : 'All apps');
+    $('#launcher-title').textContent = q ? 'Search results' : 'All apps';
   }
 
   var QS_TILES = [
@@ -853,7 +853,6 @@
         '<button class="ctx-item" data-p="shutdown">' + I.svg('power', 16) + 'Shut down</button>'
       ].join(''), window.innerWidth - 230, 42, '#power-menu');
     });
-    $('#sb-activities').addEventListener('click', function () { dispatch({ type: 'launcher' }); setTimeout(function () { var li = $('#launcher-input'); if (li) li.focus(); }, 30); });
     $('#qs-power').addEventListener('click', function () { power('shutdown'); });
 
     // quick settings
