@@ -1,0 +1,94 @@
+#!/bin/sh
+# minerva-doctor — one-command health report for a running Minerva session.
+# Prints OK/FAIL per subsystem so problems are visible without digging
+# through logs. Exit code = number of failed checks (capped at 9).
+set -u
+
+RT="${XDG_RUNTIME_DIR:-/tmp}/minerva"
+ENVF="$RT/session.env"
+STATE="${XDG_STATE_HOME:-$HOME/.local/state}/minerva"
+LOG="$STATE/session.log"
+FAILS=0
+
+ok()   { printf '  OK    %s\n' "$1"; }
+bad()  { printf '  FAIL  %s\n' "$1"; FAILS=$((FAILS + 1)); }
+warn() { printf '  WARN  %s\n' "$1"; }
+
+echo "Minerva Doctor — $(date '+%Y-%m-%d %H:%M:%S')"
+echo "--------------------------------------------------"
+
+echo "[session]"
+if [ -f "$ENVF" ]; then
+  ok "session env present ($ENVF)"
+  # shellcheck disable=SC1090
+  . "$ENVF"
+else
+  bad "no session env ($ENVF) — not inside a Minerva session?"
+  MINERVA_API=""; MINERVA_TOKEN=""
+fi
+if [ -n "${MINERVA_SESSION_MODE:-}" ]; then ok "session mode: $MINERVA_SESSION_MODE"; else warn "MINERVA_SESSION_MODE unset"; fi
+
+echo "[daemon]"
+if [ -n "$MINERVA_API" ] && command -v curl >/dev/null 2>&1; then
+  if curl -fsS -o /dev/null "$MINERVA_API/health" 2>/dev/null; then
+    ok "daemon healthy at $MINERVA_API"
+  else
+    bad "daemon not answering at $MINERVA_API"
+  fi
+else
+  bad "cannot probe daemon (no MINERVA_API or curl)"
+fi
+
+echo "[window manager]"
+if pgrep -x openbox >/dev/null 2>&1; then ok "openbox running"; else bad "openbox NOT running — app windows unmanaged"; fi
+if command -v wmctrl >/dev/null 2>&1 && command -v xprop >/dev/null 2>&1; then
+  ok "wmctrl + xprop present (taskbar/enforcer)"
+else
+  bad "wmctrl or xprop missing — sudo apt install wmctrl x11-utils"
+fi
+if [ -n "${DISPLAY:-}" ]; then ok "DISPLAY=$DISPLAY"; else bad "DISPLAY unset"; fi
+
+echo "[shell surface]"
+shell_found=no
+if command -v xprop >/dev/null 2>&1 && xprop -root _NET_CLIENT_LIST 2>/dev/null | grep -q '#'; then
+  for id in $(xprop -root _NET_CLIENT_LIST 2>/dev/null | tr ',' '\n' | sed -n 's/.*#\([0-9a-fA-F]*\).*/\1/p'); do
+    if xprop -id "0x$id" _NET_WM_NAME 2>/dev/null | grep -q '"Minerva"'; then shell_found=yes; break; fi
+  done
+  [ "$shell_found" = yes ] && ok "fullscreen shell surface window found" || bad "shell surface window NOT in client list"
+else
+  warn "no X client list (WM not running?)"
+fi
+
+echo "[browser + apps]"
+b=""
+for cand in chromium chromium-browser firefox-esr; do
+  command -v "$cand" >/dev/null 2>&1 && { b="$cand"; ok "browser: $b"; break; }
+done
+[ -n "$b" ] || bad "no browser found — sudo apt install chromium"
+for a in xterm pcmanfm scrot; do
+  command -v "$a" >/dev/null 2>&1 && ok "default app: $a" || warn "missing: $a (sudo apt install $a)"
+done
+
+echo "[services]"
+for svc in dunst parcellite; do
+  pgrep -x "$svc" >/dev/null 2>&1 && ok "$svc running" || warn "$svc not running (optional)"
+done
+
+echo "[logs]"
+if [ -f "$LOG" ]; then
+  ok "session log: $LOG"
+  echo "  ---- last 5 lines ----"
+  tail -5 "$LOG" | sed 's/^/  | /'
+  echo "  ----------------------"
+else
+  warn "no session log at $LOG"
+fi
+
+echo "--------------------------------------------------"
+if [ "$FAILS" -eq 0 ]; then
+  echo "Result: ALL CHECKS PASSED"
+else
+  echo "Result: $FAILS check(s) FAILED — fix the FAIL lines above"
+fi
+[ "$FAILS" -gt 9 ] && FAILS=9
+exit "$FAILS"

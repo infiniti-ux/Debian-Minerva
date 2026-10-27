@@ -143,7 +143,10 @@ Debian remix; a signed repo and live image are post-1.0 options.
 Checked every release: `dash -n` on all shell scripts, `node --check` on all
 JS, tree-sitter parse of all Rust, jsdom shell smoke suite, session E2E with
 stubbed X binaries, clean-VM install + login + terminal/files/browser/
-settings + logout/reboot. Hardware matrix (suspend/resume, multi-monitor,
+settings + logout/reboot. On the machine itself, `minerva-doctor` (root menu
+or terminal) prints an OK/FAIL report for daemon, WM, shell surface, browser,
+default apps, services and logs — the first thing to run and paste when
+anything misbehaves. Hardware matrix (suspend/resume, multi-monitor,
 Bluetooth, printers), performance and security audits: v0.5/v1.0 gates.
 Release artefacts: tagged .deb + checksums (post-1.0 signing key).
 

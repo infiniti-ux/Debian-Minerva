@@ -12,10 +12,13 @@
     </item>
     <separator/>
     <item label="App Launcher  (Super)">
-      <action name="Execute"><command>minerva-ctl panel launcher</command></action>
+      <action name="Execute"><command>minerva-ctl event launcher</command></action>
     </item>
     <item label="Minerva Settings">
-      <action name="Execute"><command>minerva-ctl panel settings</command></action>
+      <action name="Execute"><command>minerva-ctl event settings</command></action>
+    </item>
+    <item label="Minerva Doctor  (diagnostics)">
+      <action name="Execute"><command>xterm -title Minerva-Doctor -e sh -c 'minerva-doctor; echo; echo "Press Enter to close"; read _'</command></action>
     </item>
     <separator/>
     <menu id="client-list-menu"/>

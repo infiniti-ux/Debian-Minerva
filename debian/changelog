@@ -1,3 +1,23 @@
+debian-minerva (0.5.0) unstable; urgency=medium
+
+  * minerva-doctor: one-command session health report (daemon, WM, shell
+    surface, browser, default apps, services, log tail) with OK/FAIL per
+    subsystem; wired into the Openbox root menu.
+  * Taskbar is workspace-aware: windows carry _NET_WM_DESKTOP and the dock
+    shows only the current desktop (sticky windows everywhere), like XFCE/
+    GNOME tasklists.
+  * Real taskbar semantics: clicking a focused dock item minimizes it.
+  * Power menu gains Suspend (logind/systemctl); power menu now renders
+    in-surface in X11 sessions instead of opening a legacy panel window.
+  * Chromium windows group under the pinned Browser dock icon (app-id
+    guess aligned with the launcher catalogue).
+  * UI polish towards the Aluminium reference: translucent blurred status
+    bar scrim, blurred popovers/launcher/settings surfaces.
+  * Openbox root menu: launcher/settings now route through the shell event
+    queue; added Minerva Doctor entry.
+
+ -- Debian Minerva contributors <minerva@example.org>  Wed, 28 Oct 2026 00:05:00 +0700
+
 debian-minerva (0.4.1) unstable; urgency=medium
 
   * Fix E0382 in running_json(): the EWMH window id was moved into the JSON
