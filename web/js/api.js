@@ -204,14 +204,44 @@
   }
 
   // ------------------------------------------------------------- public API
+  var sessionMode = 'dev';
   async function probe() {
     try {
       var r = await fetch('/api/v1/health', { signal: timeout(1600) });
       var j = await r.json();
       backend = (r.ok && j && j.runtime && j.runtime.indexOf('rust') !== -1) ? 'rust' : 'browser';
+      if (backend === 'rust' && j && j.session_mode) sessionMode = j.session_mode;
     } catch (e) { backend = 'browser'; }
     notify();
     return backend;
+  }
+
+  // ------------------------------------------------------- real system API
+  // These only mean something when the Rust daemon runs inside a real
+  // session; in browser-only development they resolve to inert defaults.
+  async function exec(body) {
+    if (backend !== 'rust') return { ok: false, error: 'offline' };
+    try { return await post('/api/v1/exec', body); } catch (e) { return { ok: false, error: String(e) }; }
+  }
+  function execApp(id, arg) { return exec({ app: id, desktop: id, arg: arg || '' }); }
+  function execDesktop(id) { return exec({ desktop: id, app: id.indexOf('.') === -1 ? id : '' }); }
+  function execFallback(id) { return exec({ app_fallback: id }); }
+  function takePending() { return exec({ pending: 'take' }); }
+  function openPanel(role) { return exec({ panel: role }); }
+  function closePanels() { return exec({ panel_close: true }); }
+  function cmd(name) { return exec({ cmd: name }); }
+  function sys(op, value) { return exec(Object.assign({ sys: op }, value || {})); }
+  async function desktopApps() {
+    if (backend !== 'rust') return [];
+    try { var j = await raw('/api/v1/desktop-apps'); return j.apps || []; } catch (e) { return []; }
+  }
+  async function running() {
+    if (backend !== 'rust') return [];
+    try { var j = await raw('/api/v1/running'); return j.apps || []; } catch (e) { return []; }
+  }
+  function iconUrl(name) {
+    return '/api/v1/icon?name=' + encodeURIComponent(name || '') +
+      (SESSION_TOKEN ? '&token=' + encodeURIComponent(SESSION_TOKEN) : '');
   }
 
   async function getState() {
@@ -272,8 +302,12 @@
   global.MinervaAPI = {
     probe: probe, onBackend: onBackend,
     get backend() { return backend; },
+    get sessionMode() { return sessionMode; },
     getState: getState, getApps: getApps, getSystem: getSystem,
     action: action, terminal: terminal, files: files, fileOp: fileOp,
+    execApp: execApp, execDesktop: execDesktop, execFallback: execFallback,
+    takePending: takePending, openPanel: openPanel, closePanels: closePanels,
+    cmd: cmd, sys: sys, desktopApps: desktopApps, running: running, iconUrl: iconUrl,
     HELP: HELP, systemFallback: systemFallback
   };
 })(window);

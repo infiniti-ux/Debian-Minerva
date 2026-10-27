@@ -1,3 +1,26 @@
+debian-minerva (0.3.0) unstable; urgency=medium
+
+  * Real desktop session on X11: Openbox window manager, Minerva shell as
+    native X windows (desktop layer, always-on-top status bar, full-width
+    taskbar dock), on-demand panel windows (launcher, Wi-Fi, audio, battery,
+    calendar, power, notifications, settings) opened by the daemon.
+  * Real applications: the launcher lists installed .desktop entries; the
+    daemon spawns real processes (terminal, file manager, browser, ...) and
+    tracks them for dock running indicators.
+  * Real system control: volume via pactl/amixer, Wi-Fi scan/connect via
+    nmcli, resolution via xrandr, brightness via sysfs/xrandr, night light,
+    bluetooth rfkill, session power commands (lock/logout/reboot/shutdown).
+  * Functional Settings window: appearance (theme/accent/wallpaper/scale),
+    display (real resolution list + apply), sound, network, about.
+  * Software app now searches the real Debian archive (apt-cache) and
+    installs via a real terminal running sudo apt.
+  * Removed: boot animation, first-run wizard, "Rust core" dock badge,
+    decorative status-bar buttons (sync/location/record/lang) and the
+    aggregate quick-settings panel — replaced by per-icon real popovers.
+  * minerva-ctl: CLI for keybinds/root menu to drive the session daemon.
+
+ -- Debian Minerva contributors <minerva@example.org>  Mon, 27 Oct 2026 21:00:00 +0700
+
 debian-minerva (0.2.0) unstable; urgency=medium
 
   * Production desktop session: display-manager entry (Wayland + X11),

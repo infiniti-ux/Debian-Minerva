@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<openbox_menu xmlns="http://openbox.org/3.4/menu">
+  <menu id="root-menu" label="Minerva">
+    <item label="Terminal">
+      <action name="Execute"><command>minerva-ctl app terminal</command></action>
+    </item>
+    <item label="Files">
+      <action name="Execute"><command>minerva-ctl app files</command></action>
+    </item>
+    <item label="Web Browser">
+      <action name="Execute"><command>minerva-ctl app web</command></action>
+    </item>
+    <separator/>
+    <item label="App Launcher  (Super)">
+      <action name="Execute"><command>minerva-ctl panel launcher</command></action>
+    </item>
+    <item label="Minerva Settings">
+      <action name="Execute"><command>minerva-ctl panel settings</command></action>
+    </item>
+    <separator/>
+    <menu id="client-list-menu"/>
+    <separator/>
+    <item label="Lock Screen">
+      <action name="Execute"><command>minerva-ctl cmd lock</command></action>
+    </item>
+    <item label="Log Out">
+      <action name="Execute"><command>minerva-ctl cmd logout</command></action>
+    </item>
+    <item label="Reboot">
+      <action name="Execute"><command>minerva-ctl cmd reboot</command></action>
+    </item>
+    <item label="Shut Down">
+      <action name="Execute"><command>minerva-ctl cmd shutdown</command></action>
+    </item>
+  </menu>
+</openbox_menu>

@@ -12,13 +12,15 @@ What lands on the system:
 
 | Path | Purpose |
 |---|---|
-| `/usr/bin/minerva-sessiond` | Rust session daemon |
-| `/usr/bin/minerva-session` | DM session script (supervision + kiosk runtime) |
+| `/usr/bin/minerva-sessiond` | Rust session daemon (state + real system layer) |
+| `/usr/bin/minerva-session` | DM session script (Openbox + daemon + shell windows) |
+| `/usr/bin/minerva-ctl` | CLI used by keybinds/root menu (panel, app, cmd) |
 | `/usr/share/minerva/web/` | Shell assets served by the daemon |
-| `/usr/share/wayland-sessions/minerva.desktop` | "Minerva" session entry (Wayland DMs) |
-| `/usr/share/xsessions/minerva.desktop` | "Minerva" session entry (X11 DMs) |
+| `/usr/share/minerva/openbox/menu.xml` | Root menu template |
+| `/usr/share/xsessions/minerva.desktop` | "Minerva" session entry |
 | `/usr/lib/systemd/user/minerva-sessiond.service` | Optional headless dev unit |
 
-Runtime recommends (from `debian/control`): `cage` + `chromium`/`firefox-esr`;
-`weston` suggested as fallback. `make install` installs the same layout
-without building a package (PREFIX/DESTDIR honoured).
+Hard deps (from `debian/control`): `openbox`, `curl`. Recommends: `chromium`,
+`network-manager`, `x11-xserver-utils`. Suggests: `cage`, `weston` (kiosk
+fallback without X11). `make install` installs the same layout without
+building a package (PREFIX/DESTDIR honoured).

@@ -493,6 +493,44 @@
 
   // -------------------------------------------------------------- Software
   V.software = function (ctx) {
+    var real = ctx.api && ctx.api.backend === 'rust';
+    if (real) {
+      // Real package management: searches the actual Debian archive with
+      // apt-cache and installs through a real terminal running sudo apt.
+      return {
+        html: '<div class="app"><div class="app-toolbar"><strong style="font-size:12px">Software</strong>' +
+          '<input class="sw-search" data-q placeholder="Search Debian packages (apt)" spellcheck="false" autocomplete="off">' +
+          '<button class="tb-btn" data-search>Search</button></div>' +
+          '<div class="app-content"><div class="sw-results" data-results>' +
+          '<div class="app-status">Search the real Debian archive — installs run in a terminal with sudo.</div></div></div>' +
+          '<div class="app-status">apt · minerva-sessiond</div></div>',
+        init: function (body) {
+          var results = body.querySelector('[data-results]');
+          var input = body.querySelector('[data-q]');
+          function search() {
+            var q = input.value.trim();
+            if (!q) return;
+            results.innerHTML = '<div class="app-status">Searching apt…</div>';
+            ctx.api.sys('apt_search', { q: q }).then(function (r) {
+              var list = (r && r.results) || [];
+              results.innerHTML = list.length ? list.map(function (pk) {
+                return '<div class="sw-pkg"><div class="sw-pkg-info"><strong>' + esc(pk.name) + '</strong><p>' + esc(pk.desc) + '</p></div>' +
+                  '<button data-install="' + esc(pk.name) + '">Install</button></div>';
+              }).join('') : '<div class="app-status">No packages match “' + esc(q) + '”</div>';
+            });
+          }
+          body.querySelector('[data-search]').addEventListener('click', search);
+          input.addEventListener('keydown', function (e) { if (e.key === 'Enter') search(); });
+          setTimeout(function () { input.focus(); }, 60);
+          results.addEventListener('click', function (e) {
+            var b = e.target.closest('[data-install]');
+            if (!b) return;
+            ctx.api.sys('apt_install', { pkg: b.dataset.install });
+            ctx.toast('A terminal window will open — enter your sudo password to install ' + b.dataset.install);
+          });
+        }
+      };
+    }
     return {
       html: '<div class="app"><div class="app-toolbar"><strong style="font-size:12px">Software</strong><span class="spacer"></span>' +
         '<span class="muted" style="font-size:11px">Minerva app catalogue</span></div>' +
@@ -527,7 +565,7 @@
              ['Terminal', 'Try `neofetch`, `apps`, `open settings`, `theme light`.'],
              ['Customise', 'Change wallpaper, accent and theme in Settings → Appearance.'],
              ['Files', 'Your home directory is served by the Rust session daemon.'],
-             ['About', 'Debian Minerva 0.1.0 — MIT licensed, no Google components.']].map(function (c) {
+             ['About', 'Debian Minerva 0.3.0 — MIT licensed, no Google components.']].map(function (c) {
               return '<div class="browser-card"><h3>' + c[0] + '</h3><p>' + c[1] + '</p></div>';
             }).join('') + '</div>';
           url.value = 'minerva://start';

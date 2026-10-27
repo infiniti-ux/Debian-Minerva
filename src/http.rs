@@ -6,6 +6,7 @@
 //! per-session token (`--token`); for development it can bind anywhere.
 
 use crate::core::{SessionState, catalog_json};
+use crate::exec::Exec;
 use crate::json::{self, Value};
 use crate::services::{self, Vfs, clock_json, system_json};
 use std::fs;
@@ -26,6 +27,7 @@ pub struct Server {
     pub data_dir: PathBuf,
     pub state: Arc<Mutex<SessionState>>,
     pub vfs: Arc<Vfs>,
+    pub exec: Arc<Exec>,
 }
 
 struct Request {
@@ -88,6 +90,7 @@ impl Server {
             data_dir: self.data_dir.clone(),
             state: Arc::clone(&self.state),
             vfs: Arc::clone(&self.vfs),
+            exec: Arc::clone(&self.exec),
         }
     }
 }
@@ -273,14 +276,24 @@ fn api(req: &Request, srv: &Server) -> Response {
             }
         }
     }
+    if path == "/api/v1/icon" {
+        let name = query_param(&req.query, "name").unwrap_or_default();
+        return match srv.exec.icon(&name) {
+            Some((mime, bytes)) => Response::bytes(200, mime, bytes),
+            None => Response::text(404, "icon not found".into()),
+        };
+    }
     match (req.method.as_str(), path) {
         ("GET", "/api/v1/health") => ok(Value::obj(vec![
             ("ok", Value::Bool(true)),
             ("de", Value::s(crate::core::DE_NAME)),
             ("version", Value::s(crate::core::VERSION)),
             ("runtime", Value::s("minerva-sessiond (rust)")),
+            ("session_mode", Value::s(srv.exec.session_mode.clone())),
         ])),
         ("GET", "/api/v1/apps") => ok(Value::obj(vec![("apps", catalog_json())])),
+        ("GET", "/api/v1/desktop-apps") => srv.exec.desktop_apps(),
+        ("GET", "/api/v1/running") => srv.exec.running_json(),
         ("GET", "/api/v1/state") => {
             let state = srv.state.lock().unwrap();
             ok(state.snapshot())
@@ -330,6 +343,33 @@ fn api(req: &Request, srv: &Server) -> Response {
                 }
                 Err(e) => err(e),
             }
+        }
+        ("POST", "/api/v1/exec") => {
+            let v = match json::parse(&req.body) {
+                Ok(v) => v,
+                Err(e) => return err(format!("invalid JSON: {}", e)),
+            };
+            let sys = v.get("sys").as_str().to_string();
+            if !sys.is_empty() { return srv.exec.sys(&sys, &v); }
+            let cmd = v.get("cmd").as_str().to_string();
+            if !cmd.is_empty() { return srv.exec.session_cmd(&cmd); }
+            if v.get("panel_close").as_bool() { return srv.exec.close_panels(); }
+            let panel = v.get("panel").as_str().to_string();
+            if !panel.is_empty() { return srv.exec.open_panel(&panel); }
+            let fallback = v.get("app_fallback").as_str().to_string();
+            if !fallback.is_empty() { return srv.exec.push_pending(&fallback); }
+            if v.get("pending").as_str() == "take" { return srv.exec.take_pending(); }
+            let desktop = v.get("desktop").as_str().to_string();
+            let app = v.get("app").as_str().to_string();
+            if !desktop.is_empty() {
+                let r = srv.exec.launch_desktop_app(&desktop);
+                if r.get("ok").as_bool() || app.is_empty() { return r; }
+            }
+            if !app.is_empty() {
+                let arg = v.get("arg").as_str().to_string();
+                return srv.exec.launch_app(&app, &arg);
+            }
+            err("exec: nothing to do")
         }
         ("POST", "/api/v1/terminal") => {
             let v = match json::parse(&req.body) {

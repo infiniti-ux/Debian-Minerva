@@ -9,21 +9,23 @@ Homepage: https://github.com/infiniti-ux/Debian-Minerva
 
 Package: debian-minerva
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}
-Recommends: cage, chromium | firefox-esr
-Suggests: weston
-Description: Debian Minerva desktop environment (Rust session + shell)
- Minerva is a desktop environment for Debian: a dependency-free Rust session
- daemon owns the desktop state (windows, virtual desktops, notifications,
- theming, virtual filesystem, terminal) and a kiosk shell renders it as a
- full screen session.
+Depends: ${shlibs:Depends}, ${misc:Depends}, openbox, curl
+Recommends: chromium, network-manager, x11-xserver-utils
+Suggests: cage, weston
+Description: Debian Minerva desktop environment (Rust core, real X11 session)
+ Minerva is a real desktop environment for Debian. A dependency-free Rust
+ session daemon owns session state and the system layer: it launches real
+ applications (parsed from the installed .desktop catalogue), opens shell
+ panels as real X windows, and controls the actual system — volume (pactl),
+ Wi-Fi (nmcli), resolution (xrandr), brightness, night light and power.
  .
  Installing this package adds a "Minerva" entry to the display manager
- (GDM, LightDM, SDDM). Selecting it at login starts the session: the daemon
- is supervised on loopback with a per-session token and a kiosk compositor
- (cage on Wayland, or the existing X display) shows the desktop.
+ (GDM, LightDM, SDDM). The session runs Openbox as window manager with the
+ Minerva shell as native X surfaces: desktop layer, always-on-top status
+ bar, full-width taskbar dock, and on-demand launcher / Wi-Fi / audio /
+ battery / notification / settings windows. Real app windows are managed by
+ Openbox (Alt+Tab, snapping, virtual desktops are native).
  .
- Features: virtual desktops, dock, app launcher with 18 built-in apps,
- quick settings, notification shade, window manager with edge snapping,
- light/dark theming with 6 accents and 5 SVG wallpapers, and a Rust-backed
- terminal. No Google services or branding.
+ Also includes: light/dark theming with 6 accents and 5 wallpapers, a
+ Rust-backed terminal, notification shade and real apt package search and
+ install. No Google services or branding.

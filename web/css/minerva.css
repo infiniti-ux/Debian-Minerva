@@ -604,3 +604,142 @@ body.wallpaper-light .statusbar .sb-icon svg.battery-svg { stroke: none; width: 
     scroll-behavior: auto !important;
   }
 }
+
+/* =========================================================================
+   v0.3 — real desktop session
+   Window roles: in an X11 session every surface (desktop, top bar, dock,
+   launcher, popovers, settings) is its own X window loading the same page
+   with a #role hash; html[data-mode] shows exactly one surface per window.
+   ========================================================================= */
+
+/* --- taskbar dock: flush to the bottom, Aluminium-OS style -------------- */
+.dock { height: 56px; gap: 6px; }
+.dock-item { width: 44px; height: 44px; }
+.dock-item:hover { transform: translateY(-3px); }
+
+/* --- real popovers (wi-fi / audio / battery / power) -------------------- */
+.pop {
+  position: absolute; top: 44px; right: 10px; width: 340px; max-height: 74vh;
+  overflow: auto; z-index: 60; padding: 6px;
+  background: var(--panel); color: var(--text);
+  border: 1px solid var(--panel-border); border-radius: 18px; box-shadow: var(--shadow);
+}
+.pop-head { display: flex; align-items: center; gap: 9px; padding: 10px 12px 8px; font-size: 13.5px; }
+.pop-head .ph-icon { display: inline-flex; color: var(--accent); }
+.pop-pad { padding: 6px 12px 14px; display: flex; flex-direction: column; gap: 10px; }
+.pop-scroll { max-height: 320px; overflow: auto; padding: 0 6px 6px; }
+.pop-empty { padding: 22px 14px; text-align: center; color: var(--text-muted); font-size: 12.5px; line-height: 1.7; }
+.pop-empty code { background: var(--panel-3); padding: 2px 6px; border-radius: 6px; font-size: 11.5px; }
+.pop-item {
+  width: 100%; display: flex; align-items: center; gap: 10px; text-align: left;
+  padding: 9px 10px; border-radius: 11px; font-size: 13px; color: var(--text);
+  transition: background .14s;
+}
+.pop-item:hover { background: var(--panel-3); }
+.pop-item.active { background: var(--accent-soft); }
+.pop-item.danger { color: #ef4444; }
+.pop-item .ph-icon { display: inline-flex; color: var(--text-muted); }
+.pop-item .pi-name { flex: 1; }
+.pop-item .pi-lock, .pop-item .pi-check { display: inline-flex; color: var(--text-muted); }
+.pop-item.active .pi-check { color: var(--accent); }
+.sig { display: inline-flex; align-items: flex-end; gap: 2px; width: 18px; height: 14px; }
+.sig .bar { width: 3px; border-radius: 1px; background: var(--text-faint); opacity: .35; }
+.sig .bar.on { background: var(--text); opacity: 1; }
+.pop-volrow { display: flex; align-items: center; gap: 12px; }
+.pop-volrow input[type="range"] { flex: 1; }
+.pop-volrow b { font-size: 12.5px; min-width: 38px; text-align: right; }
+.pop-sliderrow { display: flex; align-items: center; gap: 10px; color: var(--text-muted); }
+.pop-sliderrow input[type="range"] { flex: 1; }
+.pop-sliderrow b { font-size: 12px; min-width: 36px; text-align: right; color: var(--text); }
+.pop-hint { display: flex; align-items: center; gap: 7px; font-size: 11.5px; color: var(--text-faint); padding: 2px 2px 8px; }
+.pop-bigbatt { display: flex; align-items: center; gap: 12px; padding: 6px 2px 2px; }
+.pop-bigbatt b { font-size: 22px; }
+.pop-bigbatt small { color: var(--text-muted); font-size: 11.5px; }
+.batt-mini { width: 34px; height: 16px; border: 1.6px solid var(--text-muted); border-radius: 4px; position: relative; display: inline-block; }
+.batt-mini::after { content: ""; position: absolute; right: -4px; top: 4px; width: 2.5px; height: 6px; border-radius: 0 2px 2px 0; background: var(--text-muted); }
+.batt-mini i { position: absolute; inset: 2px auto 2px 2px; border-radius: 1.5px; background: #22c55e; }
+.batt-mini.charging i { background: var(--accent); }
+.pop-connect { padding: 10px 12px 14px; border-top: 1px solid var(--panel-border); margin-top: 6px; }
+.pop-connect .pc-title { font-size: 12.5px; margin-bottom: 8px; }
+.pop-connect input { width: 100%; box-sizing: border-box; padding: 9px 11px; border-radius: 10px; border: 1px solid var(--panel-border); background: var(--panel-2); color: var(--text); font-size: 13px; }
+.pop-connect .pc-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 10px; }
+.icon-btn.muted { opacity: .45; }
+[data-mute].muted { color: #ef4444; }
+
+/* --- settings window (real display/sound/network controls) -------------- */
+.settings-win {
+  position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+  width: min(940px, 94vw); height: min(640px, 90vh); z-index: 70;
+  background: var(--panel); color: var(--text); border: 1px solid var(--panel-border);
+  border-radius: 20px; box-shadow: var(--shadow); display: flex; flex-direction: column; overflow: hidden;
+}
+.sw-head { display: flex; align-items: center; gap: 10px; padding: 14px 18px; border-bottom: 1px solid var(--panel-border); font-size: 14px; }
+.sw-body { flex: 1; display: grid; grid-template-columns: 200px 1fr; overflow: hidden; }
+.sw-nav { padding: 12px 10px; border-right: 1px solid var(--panel-border); display: flex; flex-direction: column; gap: 4px; overflow: auto; }
+.sw-nav-item { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 11px; font-size: 13px; color: var(--text-muted); text-align: left; }
+.sw-nav-item:hover { background: var(--panel-3); color: var(--text); }
+.sw-nav-item.active { background: var(--accent-soft); color: var(--text); font-weight: 600; }
+.sw-main { padding: 18px; overflow: auto; }
+.res-list { display: flex; flex-direction: column; gap: 2px; max-height: 260px; overflow: auto; }
+.theme-chip { padding: 9px 18px; border-radius: 11px; background: var(--panel-3); color: var(--text); font-size: 13px; border: 2px solid transparent; }
+.theme-chip.active { border-color: var(--accent); }
+.theme-list { display: flex; gap: 10px; }
+
+/* --- software app (real apt) -------------------------------------------- */
+.sw-search { flex: 1; margin: 0 10px; padding: 7px 12px; border-radius: 10px; border: 1px solid var(--panel-border); background: var(--panel-2); color: var(--text); font-size: 12.5px; }
+.sw-results { display: flex; flex-direction: column; gap: 6px; }
+.sw-pkg { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 12px; background: var(--panel-2); border: 1px solid var(--panel-border); }
+.sw-pkg-info { flex: 1; min-width: 0; }
+.sw-pkg-info strong { font-size: 12.5px; }
+.sw-pkg-info p { margin: 3px 0 0; font-size: 11.5px; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sw-pkg button { padding: 7px 14px; border-radius: 9px; background: var(--accent); color: #fff; font-size: 12px; font-weight: 600; }
+
+/* --- launcher: real installed apps -------------------------------------- */
+.la-glyph img.la-img { width: 34px; height: 34px; object-fit: contain; }
+.la-letter { width: 34px; height: 34px; border-radius: 9px; display: grid; place-items: center; background: var(--accent-soft); color: var(--accent); font-weight: 700; font-size: 15px; }
+
+/* =========================================================================
+   Window-role gating: one surface per X window
+   ========================================================================= */
+html[data-mode] body { background: #10131c; }
+
+/* desktop surface: no panels of its own */
+html[data-mode="desktop"] #statusbar,
+html[data-mode="desktop"] #dock { display: none !important; }
+
+/* top bar window */
+html[data-mode="topbar"] #desktop > *:not(#statusbar) { display: none !important; }
+html[data-mode="topbar"] #statusbar { position: fixed; inset: 0 auto auto 0; width: 100%; height: 100%; }
+html[data-mode="topbar"] body { background: #12141d; }
+
+/* dock window */
+html[data-mode="dock"] #desktop > *:not(#dock) { display: none !important; }
+html[data-mode="dock"] #dock { position: fixed; inset: auto 0 0 0; width: 100%; height: 100%; }
+
+/* launcher window */
+html[data-mode="launcher"] #desktop > *:not(#launcher) { display: none !important; }
+html[data-mode="launcher"] #launcher { display: flex !important; position: fixed; inset: 0; width: auto; height: auto; max-height: none; transform: none; left: 0; top: 0; border-radius: 0; }
+
+/* popover windows */
+html[data-mode="wifi"] #desktop > *:not(#wifi-pop),
+html[data-mode="audio"] #desktop > *:not(#audio-pop),
+html[data-mode="battery"] #desktop > *:not(#battery-pop),
+html[data-mode="power"] #desktop > *:not(#power-pop),
+html[data-mode="calendar"] #desktop > *:not(#calendar-pop),
+html[data-mode="shade"] #desktop > *:not(#notif-panel),
+html[data-mode="settings"] #desktop > *:not(#settings-win) { display: none !important; }
+
+html[data-mode="wifi"] #wifi-pop,
+html[data-mode="audio"] #audio-pop,
+html[data-mode="battery"] #battery-pop,
+html[data-mode="power"] #power-pop,
+html[data-mode="calendar"] #calendar-pop {
+  display: block !important; position: fixed; inset: 0; width: auto; max-width: none;
+  max-height: none; border-radius: 0; right: auto; top: auto; left: 0; bottom: auto;
+}
+html[data-mode="shade"] #notif-panel { display: flex !important; position: fixed; inset: 0; width: auto; max-width: none; max-height: none; right: auto; top: auto; border-radius: 0; }
+html[data-mode="settings"] #settings-win { display: flex !important; position: fixed; inset: 0; width: auto; height: auto; max-width: none; max-height: none; transform: none; left: 0; top: 0; border-radius: 0; }
+
+@media (prefers-reduced-motion: reduce) {
+  .dock-item:hover { transform: none; }
+}

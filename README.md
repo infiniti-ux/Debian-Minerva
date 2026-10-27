@@ -7,9 +7,10 @@ app drawer, desktop folders, compact quick settings, virtual desktops, freeform
 windows — with **all Google branding removed** and replaced by Debian Minerva.
 
 > **Status:** installable desktop environment. The `.deb` adds a **Minerva**
-> session to GDM/LightDM/SDDM; logging in starts the Rust session daemon and a
-> full-screen shell (see [docs/ROADMAP.md](docs/ROADMAP.md) for the native
-> compositor milestone).
+> session to GDM/LightDM/SDDM. Logging in starts a real X11 desktop: Openbox
+> as window manager, real applications as real windows, and the Minerva shell
+> as native X surfaces (desktop layer, always-on-top status bar, full-width
+> taskbar dock, on-demand panel windows).
 
 ---
 
@@ -17,9 +18,9 @@ windows — with **all Google branding removed** and replaced by Debian Minerva.
 
 | Layer | Language | What it does |
 |---|---|---|
-| `minerva-sessiond` | **Rust (std only, zero crates)** | Authoritative session state, window/workspace model, notification bus, settings persistence, virtual filesystem, terminal, system info, HTTP/JSON API |
-| Minerva Shell | HTML / CSS / vanilla JS | Renders the desktop, windows, dock, panels and built-in apps. Talks to the daemon over `/api/v1/*` |
-| Built-in apps | JS | Files, Terminal, Settings, Text Editor, Task Manager, Calculator, Clock, Calendar, Notes, Wallpapers, Software, Web, Mail, Music, Camera, Widgets, Displays, Help |
+| `minerva-sessiond` | **Rust (std only, zero crates)** | Authoritative session state + the real system layer: spawns real applications (from the installed `.desktop` catalogue), opens shell panels as real X windows, controls volume (pactl), Wi-Fi (nmcli), resolution (xrandr), brightness, night light and session power. HTTP/JSON API, VFS, terminal |
+| Session (`minerva-session`) | POSIX sh | Starts Openbox (real WM), the daemon (loopback + per-session token), and the shell windows; supervises crashes; tears down on logout |
+| Minerva Shell | HTML / CSS / vanilla JS | Renders each X surface (desktop, top bar, dock, launcher, Wi-Fi/audio/battery/power popovers, notifications, settings). Built-in JS apps act as fallbacks when no real application is installed |
 | Reference gallery | — | 18 leaked Aluminium OS desktop screenshots in [`references/aluminium-os/`](references/aluminium-os/) |
 
 ### Desktop features
@@ -27,8 +28,15 @@ windows — with **all Google branding removed** and replaced by Debian Minerva.
 - **Colourful adaptive app icons** — neutral Material-style artwork, no Google logos.
 - **Themed battery indicator** — real charge level from `/sys/class/power_supply`, follows the accent colour.
 - **Spring-smooth motion** — eased window/panel/launcher transitions with `prefers-reduced-motion` support.
-- **Top status bar** — clock/date, activity button, sync, location, screen
-  record, keyboard layout, notifications, Wi-Fi, battery, power.
+- **Real applications** — the launcher lists every installed `.desktop` app;
+  clicking it spawns the real program as a real window managed by Openbox.
+- **Real system controls** — Wi-Fi popover scans/connects via nmcli, audio
+  popover drives pactl/amixer, Display settings apply real resolutions via
+  xrandr, battery popover drives real brightness + night light.
+- **Real package management** — the Software app searches the actual Debian
+  archive (apt-cache) and installs through a terminal running sudo apt.
+- **Top status bar** — clock/date, activities, notifications, Wi-Fi, audio,
+  battery, power — each icon opens its own dedicated popover window.
 - **Compact Quick Settings** — slides down from the top-right (brightness,
   volume, Wi-Fi, Bluetooth, DND, night light, airplane, sync, location, record).
 - **Notification shade** — cards, per-item dismiss, clear all, DND.
@@ -47,7 +55,8 @@ windows — with **all Google branding removed** and replaced by Debian Minerva.
 - **Terminal** — `help`, `apps`, `open`, `ls`, `cat`, `mkdir`, `write`, `rm`,
   `theme`, `accent`, `wallpaper`, `workspace`, `sysinfo`, `ps`, `neofetch`,
   `notify`, `poweroff` and more. Commands mutate the real Rust session state.
-- **Boot + first-run setup wizard** — Debian-flavoured, skippable.
+- **No fake chrome** — no boot animation, no decorative buttons: everything
+  on the bar does something real.
 
 ### Keyboard shortcuts
 
@@ -70,7 +79,7 @@ windows — with **all Google branding removed** and replaced by Debian Minerva.
 # 1. Build deps + session runtime
 sudo apt update
 sudo apt install -y git build-essential devscripts debhelper cargo rustc \
-                    cage chromium
+                    openbox chromium network-manager x11-xserver-utils
 # Debian 12's apt rustc (1.63) is too old for some features; if the build
 # complains, use rustup instead:
 #   curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
@@ -88,10 +97,16 @@ sudo apt install ../debian-minerva_0.2.0_*.deb
 #    click the session chooser and pick "Minerva", then log in.
 ```
 
-The session (`/usr/bin/minerva-session`) supervises the Rust daemon on
-`127.0.0.1:47801` with a per-session token, then runs the shell full-screen
-via **cage** on Wayland (or **weston**, or a kiosk browser on an existing X
-display). Logs: `~/.local/state/minerva/session.log`.
+The session (`/usr/bin/minerva-session`) starts **Openbox** (window manager)
+and the Rust daemon on `127.0.0.1:47801` with a per-session token, then opens
+the shell as three native X windows — desktop surface, always-on-top status
+bar, full-width taskbar dock — plus on-demand panel windows (launcher, Wi-Fi,
+audio, battery, notifications, settings). Keybinds: `Super` launcher,
+`Ctrl+Alt+T` terminal, `Super+D` show desktop, `Alt+Tab` native window
+switching, `Super+←/→` workspace switching, right-click root menu.
+Logs: `~/.local/state/minerva/session.log`.
+Without X11/Openbox the session falls back to a single-window kiosk
+(cage/weston on Wayland).
 
 ### Development commands
 
@@ -135,6 +150,10 @@ browser (localStorage VFS, browser-side reducer) and the dock tray shows
 | POST | `/api/v1/action` | reducer action (launch, move, snap, toggle, …) |
 | POST | `/api/v1/terminal` | `{cmd}` → `{output, events, state}` |
 | POST | `/api/v1/save` | flush session to disk |
+| POST | `/api/v1/exec` | real system: launch app/desktop entry, open/close panel windows, session commands (logout/lock/reboot/shutdown), sys ops (volume, wifi, resolution, brightness, night light, apt search/install) |
+| GET | `/api/v1/desktop-apps` | real installed applications (scanned `.desktop` catalogue) |
+| GET | `/api/v1/running` | real processes launched by the session (dock indicators) |
+| GET | `/api/v1/icon?name=` | resolved icon bytes from the system icon theme |
 
 When started with `--token` (the real session always does), every endpoint
 except `/api/v1/health` requires `X-Minerva-Token: <token>` (or `?token=`).
@@ -154,19 +173,22 @@ curl -s -X POST localhost:8080/api/v1/action \
 
 ```
 session/
-  minerva-session    DM session script: supervises the daemon, kiosk runtime
-  minerva.desktop    "Minerva" entry for wayland-sessions/ + xsessions/
+  minerva-session    DM session script: Openbox + daemon + shell windows
+  minerva-ctl        CLI for keybinds/root menu (panel, app, cmd)
+  openbox/menu.xml   root menu template
+  minerva.desktop    "Minerva" entry for xsessions/
 src/
   main.rs        CLI, banner, self-test
   core.rs        SessionState, windows, workspaces, reducer, persistence
   json.rs        dependency-free JSON parser/serializer (+ tests)
   services.rs    VFS, terminal, /proc system info, clock
+  exec.rs        real system layer: app spawning, panel windows, nmcli/pactl/xrandr/sysfs, .desktop scan, icon lookup
   http.rs        HTTP/1.1 server, static files, API routing
 build.rs         records rustc version
 web/
-  index.html     shell structure
-  css/           full stylesheet (theming, windows, panels, apps)
-  js/            icons, api client, app views, shell/window manager
+  index.html     shell structure (window roles via #hash)
+  css/           full stylesheet (theming, windows, panels, popovers, taskbar)
+  js/            icons, api client, app views, panel windows, shell
   assets/        SVG logo + 5 procedurally generated wallpapers
 debian/          Debian packaging metadata
 packaging/       systemd user unit + XSession .desktop

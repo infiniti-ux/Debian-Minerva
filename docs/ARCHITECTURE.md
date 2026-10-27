@@ -95,20 +95,51 @@ Play Store, Google Search bar, or Google account flows. Replacements:
 ## Session lifecycle (production)
 
 A display manager (GDM, LightDM, SDDM) starts the **Minerva** session from
-`/usr/share/{wayland-sessions,xsessions}/minerva.desktop`, whose `Exec` is
-`/usr/bin/minerva-session`:
+`/usr/share/xsessions/minerva.desktop`, whose `Exec` is `/usr/bin/minerva-session`:
 
-1. The script mints a per-session token and starts `minerva-sessiond` bound
-   to `127.0.0.1:47801`, serving `/usr/share/minerva/web`. A supervisor loop
-   restarts the daemon if it crashes.
-2. It waits for `/api/v1/health` (with the token) to answer, then launches the
-   shell full-screen: a kiosk browser under X11, otherwise **cage** (preferred
-   Wayland kiosk compositor), otherwise **weston**.
-3. The shell URL carries `?token=…`; `web/js/api.js` then sends it as
-   `X-Minerva-Token` on every API call. Without a valid token the daemon
-   answers `401` — the desktop can never be driven by other local processes.
-4. When the kiosk runtime exits, the script stops the daemon (persisting
-   `session.json` first) and the session ends, returning to the login screen.
+1. The script detects screen geometry (xrandr/xdpyinfo), writes an Openbox
+   `rc.xml` with pixel-exact rules for every Minerva surface, and mints a
+   per-session token (`$XDG_RUNTIME_DIR/minerva/session.env`, mode 600).
+2. It starts `minerva-sessiond` bound to `127.0.0.1:47801` (env
+   `MINERVA_SESSION_MODE=x11`, `MINERVA_BROWSER`, `MINERVA_SESSION_PID`).
+   A supervisor loop restarts the daemon if it crashes.
+3. **Openbox** starts as the window manager, then the shell is opened as
+   three native X windows from one Chromium profile:
+   `#desktop` (fullscreen, bottom layer), `#topbar` (always-on-top strip) and
+   `#dock` (full-width taskbar flush to the bottom). Each window is the same
+   `index.html`; the `#role` hash decides which surface it renders
+   (`html[data-mode]` CSS gating).
+4. On-demand surfaces (launcher, Wi-Fi, audio, battery, calendar, power,
+   notifications, settings) are opened by the daemon as real X windows
+   (`POST /api/v1/exec {panel}`) with per-role WM_CLASS; Openbox rules place
+   them. They close on blur/Esc like real DE popovers.
+5. Every `/api/v1/*` call except health requires the session token
+   (`X-Minerva-Token` header or `?token=`). Without X11/Openbox the session
+   falls back to a single-window kiosk (`session_mode=kiosk`, cage/weston on
+   Wayland).
+6. Logging out (`minerva-ctl cmd logout` → daemon kills the session pid),
+   closing the desktop window, or a DM logout ends the script; its trap stops
+   the panel process, Openbox and the daemon (which persists `session.json`).
+
+## Real system layer (`src/exec.rs`)
+
+The daemon is the system backend — std-only, no crates:
+
+- **Apps**: launches real processes. `.desktop` entries are parsed from
+  `/usr/share/applications` (+ user/local dirs), field-codes stripped,
+  `Terminal=true` wrapped in a terminal emulator; a built-in candidate table
+  (`terminal`, `files`, `web`, …) covers apps without a desktop entry. If no
+  real binary exists the daemon reports an install hint and the shell can
+  fall back to its JS window (delivered to the desktop window via a pending
+  queue). Launched pids are tracked (`/proc/<pid>`) for dock indicators.
+- **System ops** (`POST /api/v1/exec {sys}`): volume/mute via pactl→amixer,
+  Wi-Fi state/list/toggle/connect via nmcli, resolution list/apply via
+  xrandr, brightness via `/sys/class/backlight` + xrandr software fallback,
+  night light via xrandr gamma, bluetooth via rfkill/bluetoothctl, apt
+  search via apt-cache, apt install via a real terminal running sudo, and
+  session power (lock/logout/reboot/shutdown) via loginctl/systemctl.
+- **Icons**: `GET /api/v1/icon?name=` resolves and serves bytes from the
+  hicolor/gnome/Adwaita themes and pixmaps, with an in-memory cache.
 
 Logs live in `~/.local/state/minerva/session.log`; the systemd user unit
 `minerva-sessiond.service` offers the same daemon for headless development.
