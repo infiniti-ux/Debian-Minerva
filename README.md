@@ -10,7 +10,7 @@ windows — with **all Google branding removed** and replaced by Debian Minerva.
 > session to GDM/LightDM/SDDM. Logging in starts a real X11 desktop: Openbox
 > as window manager, real applications as real windows, and the Minerva shell
 > as native X surfaces (desktop layer, always-on-top status bar, full-width
-> taskbar dock, on-demand panel windows).
+> taskbar dock, launcher, popovers, settings) with real app windows on top.
 
 ---
 
@@ -98,15 +98,18 @@ sudo apt install ../debian-minerva_0.2.0_*.deb
 ```
 
 The session (`/usr/bin/minerva-session`) starts **Openbox** (window manager)
-and the Rust daemon on `127.0.0.1:47801` with a per-session token, then opens
-the shell as three native X windows — desktop surface, always-on-top status
-bar, full-width taskbar dock — plus on-demand panel windows (launcher, Wi-Fi,
-audio, battery, notifications, settings). Keybinds: `Super` launcher,
-`Ctrl+Alt+T` terminal, `Super+D` show desktop, `Alt+Tab` native window
-switching, `Super+←/→` workspace switching, right-click root menu.
+and the Rust daemon on `127.0.0.1:47801` with a per-session token, autostarts
+standard services (notification daemon, clipboard, polkit agent), then opens
+ONE fullscreen Minerva shell surface that draws the whole desktop — wallpaper,
+top bar, full-width taskbar dock, launcher, popovers, notifications, settings.
+Real applications run as ordinary X windows on top and appear in the dock
+taskbar (EWMH client list): click focuses, right-click closes.
+Keybinds: `Super` launcher, `Ctrl+Alt+T`/`Super+T` terminal, `Super+E` files,
+`Super+W` browser, `Super+D` show desktop, `Alt+Tab` native window switching,
+`Super+←/→` workspace switching, `Print` screenshot, right-click root menu.
 Logs: `~/.local/state/minerva/session.log`.
 Without X11/Openbox the session falls back to a single-window kiosk
-(cage/weston on Wayland).
+(cage/weston on Wayland). Product roadmap & recovery guide: `docs/PRODUCT.md`.
 
 ### Development commands
 

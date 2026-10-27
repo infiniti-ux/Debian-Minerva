@@ -33,6 +33,8 @@ usage:
   minerva-ctl app <id>            launch a real app (terminal, files, web, ...
                                   or a .desktop id like org.gnome.Calculator)
   minerva-ctl cmd <logout|lock|reboot|shutdown|showdesktop>
+  minerva-ctl event <launcher|overview>   queue a shell event (Super key)
+  minerva-ctl win <focus|close|minimize|restore> <window-id>
 EOF
   exit 2
 }
@@ -43,5 +45,7 @@ case "$1" in
   panel) post "{\"panel\":\"$2\"}" ;;
   app) post "{\"desktop\":\"$2\",\"app\":\"$2\"}" ;;
   cmd)   post "{\"cmd\":\"$2\"}" ;;
+  event) post "{\"event\":\"$2\"}" ;;
+  win)   post "{\"win_op\":\"$2\",\"win_id\":\"$3\"}" ;;
   *)     usage ;;
 esac
