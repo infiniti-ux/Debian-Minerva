@@ -34,6 +34,8 @@ const BANNER: &str = r#"
 fn main() {
     let args: Vec<String> = env::args().skip(1).collect();
     let mut port: u16 = 8080;
+    let mut bind: String = "127.0.0.1".into();
+    let mut token: Option<String> = None;
     let mut web_root: Option<PathBuf> = None;
     let mut data_dir: Option<PathBuf> = None;
     let mut i = 0;
@@ -49,6 +51,8 @@ fn main() {
                     std::process::exit(2);
                 });
             }
+            "--bind" => { i += 1; bind = args.get(i).cloned().unwrap_or_else(|| "127.0.0.1".into()); }
+            "--token" => { i += 1; token = args.get(i).cloned(); }
             "--web-root" => { i += 1; web_root = args.get(i).map(PathBuf::from); }
             "--data-dir" => { i += 1; data_dir = args.get(i).map(PathBuf::from); }
             other => { eprintln!("minerva: unknown argument: {}", other); print_help(); std::process::exit(2); }
@@ -62,7 +66,9 @@ fn main() {
     println!("{}", BANNER);
     println!("  version   : {}", core::VERSION);
     println!("  rustc     : {}", env!("MINERVA_RUSTC_VERSION"));
+    println!("  bind      : {}:{}", bind, port);
     println!("  web root  : {}", web_root.display());
+    println!("  token     : {}", if token.is_some() { "enabled (session-scoped)" } else { "disabled" });
     println!("  data dir  : {}", data_dir.display());
     println!("  pid       : {}", std::process::id());
     println!();
@@ -78,7 +84,7 @@ fn main() {
 
     let state = Arc::new(Mutex::new(SessionState::load(&data_dir)));
     let vfs = Arc::new(Vfs::new(&data_dir));
-    let server = http::Server { port, web_root, data_dir, state, vfs };
+    let server = http::Server { port, bind, token, web_root, data_dir, state, vfs };
     if let Err(e) = server.run() {
         eprintln!("minerva: server error: {}", e);
         std::process::exit(1);
@@ -90,6 +96,8 @@ fn print_help() {
     println!("USAGE:\n    minerva-sessiond [OPTIONS]\n");
     println!("OPTIONS:");
     println!("    -p, --port <PORT>       HTTP port (default 8080)");
+    println!("        --bind <ADDR>       bind address (default 127.0.0.1)");
+    println!("        --token <TOKEN>     require X-Minerva-Token on /api/v1/* (except health)");
     println!("        --web-root <DIR>    shell assets (default ./web)");
     println!("        --data-dir <DIR>    session state (default ~/.config/debian-minerva)");
     println!("        --self-test         run the reducer/parser tests and print JSON");

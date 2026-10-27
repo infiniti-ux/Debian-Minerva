@@ -14,10 +14,12 @@ override_dh_auto_test:
 
 override_dh_auto_install:
 	install -Dm755 target/release/minerva-sessiond debian/debian-minerva/usr/bin/minerva-sessiond
-	mkdir -p debian/debian-minerva/usr/share/debian-minerva
-	cp -r web/. debian/debian-minerva/usr/share/debian-minerva/web/
-	install -Dm644 packaging/minerva.desktop debian/debian-minerva/usr/share/xsessions/minerva.desktop
-	install -Dm644 packaging/minerva-session.service debian/debian-minerva/usr/lib/systemd/user/minerva-session.service
+	install -Dm755 session/minerva-session debian/debian-minerva/usr/bin/minerva-session
+	mkdir -p debian/debian-minerva/usr/share/minerva/web
+	cp -r web/. debian/debian-minerva/usr/share/minerva/web/
+	install -Dm644 session/minerva.desktop debian/debian-minerva/usr/share/wayland-sessions/minerva.desktop
+	install -Dm644 session/minerva.desktop debian/debian-minerva/usr/share/xsessions/minerva.desktop
+	install -Dm644 packaging/minerva-sessiond.service debian/debian-minerva/usr/lib/systemd/user/minerva-sessiond.service
 
 override_dh_auto_clean:
 	cargo clean

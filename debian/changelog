@@ -1,3 +1,16 @@
+debian-minerva (0.2.0) unstable; urgency=medium
+
+  * Production desktop session: display-manager entry (Wayland + X11),
+    supervised session daemon on loopback with per-session token, kiosk
+    compositor runtime (cage / weston / X), crash auto-restart.
+  * Colourful adaptive app artwork, themed battery indicator driven by
+    /sys/class/power_supply, Material-style motion with reduced-motion
+    support; all AI affordances removed.
+  * Debian packaging installs /usr/bin/minerva-session, session desktop
+    files and a systemd user unit; `make deb` builds the .deb.
+
+ -- Debian Minerva contributors <minerva@example.org>  Tue, 27 Oct 2026 18:00:00 +0700
+
 debian-minerva (0.1.0-1) unstable; urgency=medium
 
   * Initial release: Rust session daemon, Minerva shell, 18 built-in apps,

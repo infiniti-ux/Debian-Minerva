@@ -6,9 +6,10 @@ systems language. The UI is a near-1:1 recreation of the leaked
 app drawer, desktop folders, compact quick settings, virtual desktops, freeform
 windows — with **all Google branding removed** and replaced by Debian Minerva.
 
-> **Status:** working Phase-1 prototype. The Rust session daemon + full web
-> shell are implemented. A native Wayland compositor is the next milestone
-> (see [docs/ROADMAP.md](docs/ROADMAP.md)).
+> **Status:** installable desktop environment. The `.deb` adds a **Minerva**
+> session to GDM/LightDM/SDDM; logging in starts the Rust session daemon and a
+> full-screen shell (see [docs/ROADMAP.md](docs/ROADMAP.md) for the native
+> compositor milestone).
 
 ---
 
@@ -63,24 +64,45 @@ windows — with **all Google branding removed** and replaced by Debian Minerva.
 
 ---
 
-## Quick start
-
-### Native (Debian)
+## Install on a Debian VM (desktop environment)
 
 ```bash
-sudo apt install cargo rustc
-cargo build --release
-./target/release/minerva-sessiond --port 8080 --web-root ./web
-# open http://localhost:8080
+# 1. Build deps + session runtime
+sudo apt update
+sudo apt install -y git build-essential devscripts debhelper cargo rustc \
+                    cage chromium
+# Debian 12's apt rustc (1.63) is too old for some features; if the build
+# complains, use rustup instead:
+#   curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+#   source "$HOME/.cargo/env"
+
+# 2. Clone and build the .deb
+git clone https://github.com/infiniti-ux/Debian-Minerva.git
+cd Debian-Minerva
+make deb                      # dpkg-buildpackage -us -uc -b
+
+# 3. Install it
+sudo apt install ../debian-minerva_0.2.0_*.deb
+
+# 4. Log out, and at the display manager (GDM/LightDM/SDDM)
+#    click the session chooser and pick "Minerva", then log in.
 ```
 
-Other useful commands:
+The session (`/usr/bin/minerva-session`) supervises the Rust daemon on
+`127.0.0.1:47801` with a per-session token, then runs the shell full-screen
+via **cage** on Wayland (or **weston**, or a kiosk browser on an existing X
+display). Logs: `~/.local/state/minerva/session.log`.
+
+### Development commands
 
 ```bash
+make build                # cargo build --release
+make run                  # serve the shell at http://localhost:8080 (dev)
+make session              # run the full DE session right here (needs cage/X)
 make test                 # cargo test (JSON parser + reducer tests)
-make self-test            # run the reducer smoke test, print the snapshot
-make run                  # build + serve
-make install              # install to /usr (binary, web assets, session file)
+make self-test            # reducer smoke test, prints the snapshot
+make install              # install to /usr without the .deb
+make deb                  # build the installable .deb
 ```
 
 The daemon has **no external crates** — `Cargo.toml` has an empty
@@ -88,20 +110,15 @@ The daemon has **no external crates** — `Cargo.toml` has an empty
 State is persisted to `$XDG_CONFIG_HOME/debian-minerva/session.json` and the
 virtual home lives in `…/debian-minerva/home/`.
 
-### Preview without a Rust toolchain
+### Browser-only mode (no Rust toolchain)
 
 ```bash
 node tools/preview.mjs --port 8080
-# or: python3 -m http.server 8080 --directory web
 ```
 
-The shell detects the missing daemon and runs the identical API surface in the
-browser (localStorage VFS, browser-side reducer, `/proc`-less system info).
-The dock tray shows **Preview** instead of **Rust core**. This is how the live
-preview in the Arena sandbox is served — no Rust compiler is available there.
-
-Add `?setup=1` to the URL if you want to walk through the optional first-run
-setup wizard; by default the preview opens straight onto the desktop.
+With no daemon reachable the shell runs the identical API surface in the
+browser (localStorage VFS, browser-side reducer) and the dock tray shows
+**Preview** instead of **Rust core** — useful for UI development only.
 
 ---
 
@@ -119,6 +136,9 @@ setup wizard; by default the preview opens straight onto the desktop.
 | POST | `/api/v1/terminal` | `{cmd}` → `{output, events, state}` |
 | POST | `/api/v1/save` | flush session to disk |
 
+When started with `--token` (the real session always does), every endpoint
+except `/api/v1/health` requires `X-Minerva-Token: <token>` (or `?token=`).
+
 Example:
 
 ```bash
@@ -133,6 +153,9 @@ curl -s -X POST localhost:8080/api/v1/action \
 ## Layout
 
 ```
+session/
+  minerva-session    DM session script: supervises the daemon, kiosk runtime
+  minerva.desktop    "Minerva" entry for wayland-sessions/ + xsessions/
 src/
   main.rs        CLI, banner, self-test
   core.rs        SessionState, windows, workspaces, reducer, persistence

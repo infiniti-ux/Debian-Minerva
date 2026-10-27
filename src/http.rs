@@ -2,8 +2,8 @@
 //!
 //! Kept deliberately small and dependency-free: one thread per connection,
 //! a hand-written request parser, and a shared `Mutex<SessionState>`. On a real
-//! Debian install this is bound to a unix socket behind the display manager;
-//! for development it binds to 0.0.0.0 so a browser preview works.
+//! Debian install the session script binds it to 127.0.0.1 with a
+//! per-session token (`--token`); for development it can bind anywhere.
 
 use crate::core::{SessionState, catalog_json};
 use crate::json::{self, Value};
@@ -17,6 +17,11 @@ use std::thread;
 
 pub struct Server {
     pub port: u16,
+    pub bind: String,
+    /// When set, every `/api/v1/*` route except `/api/v1/health` requires a
+    /// matching `X-Minerva-Token` header. The session script mints one token
+    /// per login and hands it to the kiosk shell through the launch URL.
+    pub token: Option<String>,
     pub web_root: PathBuf,
     pub data_dir: PathBuf,
     pub state: Arc<Mutex<SessionState>>,
@@ -57,7 +62,7 @@ impl Response {
 
 impl Server {
     pub fn run(&self) -> std::io::Result<()> {
-        let addr = format!("0.0.0.0:{}", self.port);
+        let addr = format!("{}:{}", self.bind, self.port);
         let listener = TcpListener::bind(&addr)?;
         println!("  listening on http://{}", addr);
         for stream in listener.incoming() {
@@ -77,6 +82,8 @@ impl Server {
     fn clone_context(&self) -> Server {
         Server {
             port: self.port,
+            bind: self.bind.clone(),
+            token: self.token.clone(),
             web_root: self.web_root.clone(),
             data_dir: self.data_dir.clone(),
             state: Arc::clone(&self.state),
@@ -250,6 +257,22 @@ fn err(msg: impl Into<String>) -> Response {
 
 fn api(req: &Request, srv: &Server) -> Response {
     let path = req.path.as_str();
+    // Session token gate: health stays open so the session script can probe
+    // readiness; everything else is session-private.
+    if let Some(expected) = &srv.token {
+        if path != "/api/v1/health" {
+            let given = req.headers.iter()
+                .find(|(k, _)| k == "x-minerva-token")
+                .map(|(_, v)| v.clone())
+                .or_else(|| query_param(&req.query, "token"));
+            if given.as_deref() != Some(expected.as_str()) {
+                return Response::json(401, Value::obj(vec![
+                    ("ok", Value::Bool(false)),
+                    ("error", Value::s("missing or invalid session token".into())),
+                ]));
+            }
+        }
+    }
     match (req.method.as_str(), path) {
         ("GET", "/api/v1/health") => ok(Value::obj(vec![
             ("ok", Value::Bool(true)),
