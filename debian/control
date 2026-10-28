@@ -13,9 +13,13 @@ Depends: ${shlibs:Depends}, ${misc:Depends}, curl, x11-utils, xterm
 Recommends: xfce4-session, xfwm4, xfconf, chromium, wmctrl, openbox, xfce4-screensaver, xfce4-power-manager, mate-polkit, xdg-desktop-portal, xdg-desktop-portal-gtk, network-manager, x11-xserver-utils, dbus-x11, dex, dunst, xfce4-clipman, scrot, open-vm-tools-desktop,
  pcmanfm, mousepad, viewnior, xarchiver, galculator, atril, xfce4-terminal
 Suggests: cage, weston, ffmpeg, orca, system-config-printer, at-spi2-core
-Description: Debian Minerva desktop environment (Rust core, real X11 session)
- Minerva is a real desktop environment for Debian. A dependency-free Rust
- session daemon owns session state and the system layer: it launches real
+Description: Debian Minerva desktop environment (native Rust X11 WM + compositor)
+ Minerva is a real desktop environment for Debian. Since 0.11.0 the primary
+ base is minerva-wm, a native X11 window manager and compositor written in
+ Rust (libX11/libXrender/libXcomposite/libXdamage FFI, zero crates): real
+ ICCCM/EWMH window management, WM-drawn panel/taskbar/launcher/quick
+ settings, and a COMPOSITE+DAMAGE+RENDER compositing pass. A dependency-free
+ Rust session daemon owns session state and the system layer: it launches real
  applications (parsed from the installed .desktop catalogue), opens shell
  panels as real X windows, and controls the actual system — volume (pactl),
  Wi-Fi (nmcli), resolution (xrandr), brightness, night light and power.

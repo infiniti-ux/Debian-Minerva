@@ -167,10 +167,25 @@ Release artefacts: tagged .deb + checksums (post-1.0 signing key).
   `rc.xml.pre-minerva`).
 * Remove Minerva completely: `sudo apt remove --purge debian-minerva`.
 
-## 0.6.x — wrapper base architecture (current)
+## 0.11.x — native base architecture (current)
 
-The session machinery is delegated to proven Debian components; Minerva owns
-the surface and the system layer only:
+`minerva-wm` is the desktop: a real X11 window manager and compositor in
+Rust (std + libX11 FFI, zero crates). It claims the screen (WM_S0 +
+SubstructureRedirect), manages windows per ICCCM/EWMH (frames, decorations,
+focus, Alt-Tab, move/resize drags, 4 workspaces, show-desktop, minimize/
+maximize/fullscreen), and composites via COMPOSITE manual redirect + DAMAGE
++ RENDER onto the overlay window (shadows, ARGB clients) with a loud direct-
+painting fallback. Panel, taskbar, launcher and quick-settings are native X
+windows it draws itself; `minerva-ctl` drives it through the
+`_MINERVA_WM_CMD` root property. `minerva-wm --smoke` runs an end-to-end
+protocol self-test on a bare display (CI runs it under Xvfb every push).
+
+## 0.6.x — wrapper base architecture (legacy fail-safe)
+
+Kept as the two-strike fallback: if minerva-wm is missing or dies twice,
+minerva-session reports loudly (~/minerva-report.txt + critical
+notification) and demotes to this proven stack. The session machinery is
+delegated to Debian components; Minerva owns the surface and system layer:
 
 - **xfce4-session + xfwm4** run the session (autostart, polkit, save-session,
   window management). xfdesktop / xfce4-panel / xfce4-screensaver /
