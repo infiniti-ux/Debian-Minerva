@@ -1,5 +1,5 @@
 /* Debian Minerva — panel windows & real popovers.
-// version marker: 0.9.0
+// version marker: 0.9.1
  *
  * In a real X11 session every popover (Wi-Fi, audio, battery, calendar,
  * power) and the Settings window is its own X window loaded with a #role
@@ -185,7 +185,8 @@
     if (!el || !el.isConnected || !$('[data-batt-pct]', el)) return;
     API.getSystem().then(function (sys) {
       if (!el.isConnected) return;
-      var pct = Math.round((sys.battery_present ? sys.battery_level : 1) * 100);
+      var lvl = Number(sys.battery_level);
+      var pct = Math.max(0, Math.min(100, Math.round((sys.battery_present && isFinite(lvl) ? lvl : 1) * 100)));
       var pe = $('[data-batt-pct]', el); if (pe) pe.textContent = sys.battery_present ? pct + '%' : 'AC';
       var se = $('[data-batt-state]', el); if (se) se.textContent = !sys.battery_present ? 'No battery — mains power'
         : (sys.battery_charging ? 'Charging' : 'On battery power');
@@ -193,7 +194,7 @@
       if (icon) {
         icon.innerHTML = '<span class="batt-mini' + (sys.battery_charging ? ' charging' : '') + '"><i style="width:' + pct + '%"></i></span>';
       }
-    });
+    }).catch(function () {});
     var s = state();
     if (s) {
       var br = $('[data-bright]', el); if (br) br.value = Math.round(s.brightness * 100);

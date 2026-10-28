@@ -50,7 +50,7 @@
 
   function defaultState() {
     return {
-      de: 'Debian Minerva', version: '0.9.0', seq: 1,
+      de: 'Debian Minerva', version: '0.9.1', seq: 1,
       theme: 'light', accent: '#a80030', wallpaper: 'swirl', scale: 1,
       volume: 0.65, brightness: 0.82,
       active_workspace: 0, show_overview: false, show_launcher: false,
@@ -71,6 +71,13 @@
         if (v[k] !== undefined) S[k] = v[k];
       });
       if (v.toggles) S.toggles = Object.assign({}, S.toggles, v.toggles);
+      // sanitise: storage may hold garbage from edited/older versions
+      if (!Array.isArray(S.pinned)) S.pinned = defaultState().pinned;
+      if (!Array.isArray(S.recent_apps)) S.recent_apps = [];
+      S.scale = clamp(Number(S.scale) || 1, 0.7, 1.6);
+      S.volume = clamp(Number(S.volume) || 0, 0, 1);
+      S.brightness = clamp(Number(S.brightness) || 0, 0.1, 1);
+      S.active_workspace = Math.max(0, parseInt(S.active_workspace, 10) || 0);
     } catch (e) {}
   }
   var saveTimer;
@@ -294,7 +301,7 @@
       S.realwins = (j && j.windows) || [];
       S.curdesk = (j && typeof j.current_desktop === 'number') ? j.current_desktop : 0;
       if (!MODE || MODE === 'dock' || MODE === 'desktop') renderDock();
-    });
+    }).catch(function () {});
   }
 
   function winForApp(id) {
@@ -312,7 +319,7 @@
         lastSig = sig;
         fromServer(snap);
         render();
-      });
+      }).catch(function () {});
     }, 2500);
     if (isDesk || MODE === 'dock') setInterval(refreshRunning, 4000);
     if (isDesk) setInterval(function () {
@@ -325,7 +332,7 @@
           } else if (ev === 'overview') dispatch({ type: 'overview' });
           else if (ev === 'settings') dispatch({ type: 'launch', app: 'settings' });
         });
-      });
+      }).catch(function () {});
     }, 1200);
     if (isDesk) {
       // JS-window fallbacks requested from panel windows (launcher, dock)
@@ -334,7 +341,7 @@
           if (r && r.apps && r.apps.length) {
             r.apps.forEach(function (id) { dispatch({ type: 'launch', app: id }); });
           }
-        });
+        }).catch(function () {});
       }, 2000);
     }
   }
@@ -1098,7 +1105,7 @@
       }
       if (typing) return;
       if (X11) return; // openbox owns Super, Alt+Tab, Super+D/W in a real session
-      if (e.key === 'Meta' || (e.key === 'Super')) { e.preventDefault(); dispatch({ type: 'launcher' }); setTimeout(function () { if (S.show_launcher) $('#launcher-input').focus(); }, 30); return; }
+      if (e.key === 'Meta' || (e.key === 'Super')) { e.preventDefault(); dispatch({ type: 'launcher' }); setTimeout(function () { var li = $('#launcher-input'); if (S.show_launcher && li) li.focus(); }, 30); return; }
       if (e.key.toLowerCase() === 'w' && (e.metaKey || e.superKey)) { e.preventDefault(); dispatch({ type: 'overview' }); return; }
       if (e.key.toLowerCase() === 'd' && (e.metaKey || e.superKey)) { e.preventDefault(); dispatch({ type: 'minimize_all' }); return; }
       if (e.altKey && e.key === 'Tab') {

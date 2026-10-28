@@ -1,5 +1,5 @@
 /* Debian Minerva — dependency-free SVG icon set (no external assets). */
-// version marker: 0.9.0
+// version marker: 0.9.1
 (function (global) {
   'use strict';
 

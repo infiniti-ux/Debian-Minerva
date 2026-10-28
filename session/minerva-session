@@ -496,7 +496,7 @@ if [ -n "$BASE_PID" ]; then
     BASE_PID=$!
   done
 else
-  wait "${SHELL_START_PID:-0}"
+  if [ -n "${SHELL_START_PID:-}" ]; then wait "$SHELL_START_PID"; fi
   EXIT_CODE=$?
 fi
 log "session exit code=$EXIT_CODE"
