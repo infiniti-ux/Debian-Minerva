@@ -1,3 +1,30 @@
+debian-minerva (0.9.3) unstable; urgency=medium
+
+  * Debug-suite completion pass (suite from 0.9.2 grown past the 1,000
+    line mandate, now 1,036 lines of offline debugging code):
+      - apps-view-test: all 12 built-in app views render + init against
+        a stub ctx (a view that throws here white-screens on desktop);
+      - session-env-test: full-session integration with stub binaries
+        incl. a python3 HTTP stub daemon so the 10s health-wait passes;
+        asserts session.env contracts WHILE the session lives, ready
+        file, xfconf/mask-before-base, daemon-before-base ordering from
+        the session log, shell-launcher and WM reachability;
+      - verify-test + trace-test: evidence bundle and forensic
+        recorder contracts (report replaced not appended; JSONL valid;
+        refusal outside a session; duration guard);
+      - qa.sh: new gate — every session script must keep its executable
+        bit (verify/trace call them by PATH name).
+  * Real defects the suite caught and this release fixes:
+      - session/minerva-doctor and session/minerva-autostart had lost
+        their executable bits in the repo (minerva-verify degraded to
+        'Permission denied' for the doctor section when run from a
+        checkout; the .deb install path masked it via install -Dm755);
+      - apps-view test stub completed to the real ctx contract
+        (registerEditorLoader, files/fileOp) — views were fine, the
+        harness was not.
+
+ -- Minerva Team <minerva@localhost>  Wed, 28 Oct 2026 18:05:00 +0700
+
 debian-minerva (0.9.2) unstable; urgency=medium
 
   * Debug-suite release — 1,100+ lines of real debugging/test code in

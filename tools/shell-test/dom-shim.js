@@ -39,7 +39,7 @@ function makeElement(tag) {
       if (i !== -1) this.children.splice(i, 1);
       c.parentNode = null; return c;
     },
-    querySelector: function () { return null; },
+    querySelector: function () { return makeElement('div'); },
     querySelectorAll: function () { return []; },
     getBoundingClientRect: function () { return { left: 0, top: 0, right: 0, bottom: 0, width: 0, height: 0 }; },
     addEventListener: function () {},

@@ -16,6 +16,9 @@ node css-check.js ../../web/css/minerva.css || fail=1
 echo "== shell-test: icon registry =="
 node icons-test.js || fail=1
 
+echo "== shell-test: app views render =="
+node apps-view-test.js || fail=1
+
 echo "== shell-test: cross-file static integrity =="
 node static-check.js || fail=1
 
