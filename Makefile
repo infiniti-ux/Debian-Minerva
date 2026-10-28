@@ -3,7 +3,7 @@ SHELL := /bin/bash
 PORT ?= 8080
 PREFIX ?= /usr/local
 
-.PHONY: build run test self-test preview clean install uninstall reference deb session qa test-shell test-session test-all wm-smoke
+.PHONY: build run test self-test preview clean install uninstall reference deb deb-deps session qa test-shell test-session test-all wm-smoke
 
 build:
 	cargo build --release
@@ -44,8 +44,31 @@ uninstall:
 	rm -f $(DESTDIR)$(PREFIX)/share/xsessions/minerva.desktop
 	rm -f $(DESTDIR)$(PREFIX)/lib/systemd/user/minerva-sessiond.service
 
-# Build the installable .deb (then: sudo apt install ../debian-minerva_0.2.0_*.deb)
+# Build deps for the .deb — minerva-wm (native WM/compositor) needs the X11
+# dev libraries at BUILD time; the runtime libs come in via shlibs.
+X11_BUILD_DEPS := libx11-dev libxext-dev libxrender-dev libxcomposite-dev libxdamage-dev libxfixes-dev
+DEB_BUILD_DEPS := debhelper cargo rustc $(X11_BUILD_DEPS)
+
+# Install everything `make deb` needs (asks for sudo itself)
+deb-deps:
+	sudo apt-get install -y $(DEB_BUILD_DEPS)
+
+# Build the installable .deb (then: sudo apt install ../debian-minerva_0.11.0_*.deb)
+# Pre-flight: missing build deps become the exact apt command, not a cryptic
+# dpkg-checkbuilddeps abort halfway through.
 deb:
+	@missing=""; \
+	for p in $(DEB_BUILD_DEPS); do \
+	  dpkg -s "$$p" >/dev/null 2>&1 || missing="$$missing $$p"; \
+	done; \
+	if [ -n "$$missing" ]; then \
+	  echo "make deb: missing build dependencies:$$missing"; \
+	  echo ""; \
+	  echo "  fix with:  sudo apt install -y$$missing"; \
+	  echo "  (or run:   make deb-deps)"; \
+	  echo ""; \
+	  exit 3; \
+	fi
 	dpkg-buildpackage -us -uc -b
 
 # Run the full desktop session right here (needs X + openbox; falls back to cage)
