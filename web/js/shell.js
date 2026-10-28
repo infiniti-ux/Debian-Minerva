@@ -50,7 +50,7 @@
 
   function defaultState() {
     return {
-      de: 'Debian Minerva', version: '0.7.1', seq: 1,
+      de: 'Debian Minerva', version: '0.8.0', seq: 1,
       theme: 'light', accent: '#a80030', wallpaper: 'swirl', scale: 1,
       volume: 0.65, brightness: 0.82,
       active_workspace: 0, show_overview: false, show_launcher: false,
@@ -694,8 +694,8 @@
 
   function renderLauncher() {
     var el = $('#launcher');
-    el.classList.toggle('hidden', !S.show_launcher && MODE !== 'launcher');
-    if (!S.show_launcher && MODE !== 'launcher') return;
+    if (!S.show_launcher && MODE !== 'launcher') { hideAnimated(el); return; }
+    el.classList.remove('hidden', 'closing');
     var q = ($('#launcher-input').value || '').toLowerCase();
     var html = '', count = 0;
     if (X11) {
@@ -716,6 +716,7 @@
       count = list.length;
     }
     $('#launcher-grid').innerHTML = html || '<div class="launcher-empty">No apps match “' + esc(q) + '”</div>';
+    $$('#launcher-grid .launcher-app').forEach(function (b, i) { b.style.setProperty('--i', Math.min(i, 40)); });
     $('#launcher-count').textContent = count + ' apps';
     $('#launcher-title').textContent = q ? 'Search results' : 'All apps';
   }
@@ -783,16 +784,21 @@
     setTimeout(function () { d.style.opacity = '0'; d.style.transform = 'translateX(20px)'; setTimeout(function () { if (d.parentNode) d.parentNode.removeChild(d); }, 320); }, 2600);
   }
 
+  function hideAnimated(el) {
+    if (!el || el.classList.contains('hidden') || el.classList.contains('closing')) return;
+    el.classList.add('closing');
+    setTimeout(function () { el.classList.add('hidden'); el.classList.remove('closing'); }, 150);
+  }
   function closePanels() {
     ['#qs', '#notif-panel', '#context-menu', '#power-menu', '#calendar-pop',
      '#search-results', '#wifi-pop', '#audio-pop', '#battery-pop', '#power-pop'].forEach(function (sel) {
-      var el = $(sel); if (el) el.classList.add('hidden');
+      hideAnimated($(sel));
     });
   }
   function togglePanel(id) {
     var el = $(id), wasHidden = el.classList.contains('hidden');
     closePanels();
-    if (wasHidden) el.classList.remove('hidden');
+    if (wasHidden) el.classList.remove('hidden', 'closing');
     if (id === '#qs') renderQS();
     if (id === '#notif-panel') renderNotifications();
     if (id === '#calendar-pop') renderCalendar();
@@ -908,6 +914,30 @@
     $('#notif-dnd').addEventListener('click', function () { dispatch({ type: 'toggle', key: 'dnd' }); });
 
     // dock
+    // Dock magnification (Aluminium shelf behaviour): icons scale with the
+    // cursor distance. Offset metrics + transform only, so it stays 60fps
+    // even on software GL inside a VM.
+    (function () {
+      var dock = $('#dock'), raf = 0;
+      function apply(mx) {
+        var items = dock.querySelectorAll('.dock-item');
+        for (var i = 0; i < items.length; i++) {
+          var c = items[i].offsetLeft + items[i].offsetWidth / 2;
+          var d = mx - c;
+          var s = 1 + 0.3 * Math.exp(-(d * d) / (2 * 64 * 64));
+          items[i].style.transform = 'scale(' + s.toFixed(3) + ') translateY(-' + ((s - 1) * 30).toFixed(1) + 'px)';
+        }
+        raf = 0;
+      }
+      dock.addEventListener('mousemove', function (e) {
+        var x = e.clientX - dock.getBoundingClientRect().left;
+        if (!raf) raf = requestAnimationFrame(function () { apply(x); });
+      });
+      dock.addEventListener('mouseleave', function () {
+        var items = dock.querySelectorAll('.dock-item');
+        for (var i = 0; i < items.length; i++) items[i].style.transform = '';
+      });
+    })();
     $('#dock').addEventListener('click', function (e) {
       if (e.target.closest('#dock-launcher')) {
         dispatch({ type: 'launcher' });
