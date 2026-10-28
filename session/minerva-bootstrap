@@ -29,6 +29,11 @@ power-manager|xfce4-power-manager|xfce4-power-manager
 display-tools|xrandr|x11-xserver-utils
 wm-tools|wmctrl|wmctrl
 fonts|fc-list|fontconfig
+portal-daemon|xdg-desktop-portal|xdg-desktop-portal
+portal-gtk-backend|xdg-desktop-portal-gtk|xdg-desktop-portal-gtk
+user-units|/usr/lib/systemd/user/minerva-dunst.service|debian-minerva
+user-preset|/usr/lib/systemd/user-preset/90-minerva.preset|debian-minerva
+mime-defaults|/etc/xdg/mimeapps.list|debian-minerva
 '
 
 have() {

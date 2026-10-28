@@ -1,5 +1,9 @@
 # Minerva vs "build a DE from scratch" tutorial parity
 
+How the canonical recipe, the freedesktop platform contracts, and Minerva's
+components line up — including the contracts layer added in 0.9.0 that the
+tutorials never mention but every real desktop ships.
+
 Sources the user pointed at, read for this release:
 
 - Debian Wiki — *DesktopEnvironment*: a DE is a coherent suite; its parts are
@@ -38,3 +42,20 @@ What differs from Omarchy on purpose: Debian instead of Arch, X11 instead of
 Hyprland/Wayland (spec + VMware friendliness), and the bar/launcher/notifications
 are our own Aluminium-accurate shell surface instead of waybar+rofi — that
 surface is the product; the plumbing underneath is Debian's proven parts.
+
+## Platform contracts (0.9.0) — the layer tutorials skip
+
+Tutorials stop at "assemble components"; a production desktop also honors
+freedesktop contracts. Minerva now ships them:
+
+| Contract | Implementation |
+|---|---|
+| Desktop identity | `XDG_CURRENT_DESKTOP=Minerva` + `XDG_SESSION_DESKTOP=Minerva` exported session-wide (portals, OnlyShowIn, theme queries) |
+| Portals | `xdg-desktop-portal` + GTK backend with Minerva preference file `/usr/share/xdg-desktop-portal/minerva-portals.conf` (file pickers, screenshots, screen share, settings) |
+| Service lifecycle | systemd **user** units `minerva-dunst/parcellite/polkit.service` (`WantedBy=graphical-session.target`, restart on failure) + vendor preset `90-minerva.preset`; shell-start spawns only as fallback |
+| Toolkit display server | `GDK_BACKEND=x11`, `CLUTTER_BACKEND=x11`, `QT_QPA_PLATFORM=xcb`, `MOZ_ENABLE_WAYLAND=0`, `SAL_USE_VCLPLUGIN=gtk3` — the X11 mandate enforced per process |
+| MIME defaults | `/etc/xdg/mimeapps.list` written by postinst (browser/editor/files); user-level file still wins per spec |
+| Cursor theme | `XCURSOR_THEME`/`XCURSOR_SIZE` exported to match the xsettings channel |
+
+Verification: `minerva-doctor` prints a `[platform contracts]` section and
+`minerva-verify` dumps the exported contract env into the report.

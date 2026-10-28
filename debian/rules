@@ -21,6 +21,7 @@ override_dh_auto_install:
 	install -Dm755 session/minerva-shell-start debian/debian-minerva/usr/bin/minerva-shell-start
 	install -Dm755 session/minerva-bootstrap debian/debian-minerva/usr/bin/minerva-bootstrap
 	install -Dm755 session/minerva-verify debian/debian-minerva/usr/bin/minerva-verify
+	install -Dm755 session/minerva-dunstrc debian/debian-minerva/usr/bin/minerva-dunstrc
 	install -Dm644 session/xresources debian/debian-minerva/usr/share/minerva/xresources
 	mkdir -p debian/debian-minerva/usr/share/themes
 	cp -a theme/Minerva debian/debian-minerva/usr/share/themes/Minerva
@@ -29,6 +30,11 @@ override_dh_auto_install:
 	install -Dm644 session/openbox/menu.xml debian/debian-minerva/usr/share/minerva/openbox/menu.xml
 	install -Dm644 session/minerva.desktop debian/debian-minerva/usr/share/xsessions/minerva.desktop
 	install -Dm644 packaging/minerva-sessiond.service debian/debian-minerva/usr/lib/systemd/user/minerva-sessiond.service
+	install -Dm644 packaging/minerva-dunst.service debian/debian-minerva/usr/lib/systemd/user/minerva-dunst.service
+	install -Dm644 packaging/minerva-parcellite.service debian/debian-minerva/usr/lib/systemd/user/minerva-parcellite.service
+	install -Dm644 packaging/minerva-polkit.service debian/debian-minerva/usr/lib/systemd/user/minerva-polkit.service
+	install -Dm644 packaging/90-minerva.preset debian/debian-minerva/usr/lib/systemd/user-preset/90-minerva.preset
+	install -Dm644 packaging/minerva-portals.conf debian/debian-minerva/usr/share/xdg-desktop-portal/minerva-portals.conf
 
 override_dh_auto_clean:
 	cargo clean

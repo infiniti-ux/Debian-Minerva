@@ -31,6 +31,18 @@ LOG="$STATE/session.log"
 RT="${XDG_RUNTIME_DIR:-/tmp}/minerva"
 mkdir -p "$RT" && chmod 700 "$RT" 2>/dev/null
 
+# ---- platform contracts: every child (daemon, base, apps) sees Minerva ----
+export XDG_CURRENT_DESKTOP=Minerva
+export XDG_SESSION_DESKTOP=Minerva
+export GDK_BACKEND=x11
+export CLUTTER_BACKEND=x11
+export QT_QPA_PLATFORM=xcb
+export MOZ_ENABLE_WAYLAND=0
+export SAL_USE_VCLPLUGIN=gtk3
+export GTK_USE_PORTAL=1
+export XCURSOR_THEME="${XCURSOR_THEME:-Adwaita}"
+export XCURSOR_SIZE="${XCURSOR_SIZE:-24}"
+
 TOKEN="$(cat /proc/sys/kernel/random/uuid 2>/dev/null || echo "minerva-$$-$(date +%s)")"
 URL="http://$BIND:$PORT/?token=$TOKEN"
 
@@ -48,6 +60,7 @@ log() { echo "[minerva-session] $*" >>"$LOG"; }
   echo "MINERVA_PORT=$PORT"
   echo "MINERVA_TOKEN=$TOKEN"
   echo "MINERVA_API=http://$BIND:$PORT/api/v1"
+  echo "XDG_CURRENT_DESKTOP=$XDG_CURRENT_DESKTOP"
 } >"$RT/session.env"
 chmod 600 "$RT/session.env" 2>/dev/null
 
@@ -409,6 +422,12 @@ export QT_QPA_PLATFORMTHEME="${QT_QPA_PLATFORMTHEME:-gtk}"
 [ -n "$MINERVA_BROWSER" ] || { echo "Minerva: no browser found. sudo apt install chromium" >&2; exit 1; }
 
 xsetroot -solid '#0b1020' 2>/dev/null
+
+if command -v systemctl >/dev/null 2>&1; then
+  systemctl --user import-environment DISPLAY XAUTHORITY XDG_CURRENT_DESKTOP \
+    XDG_SESSION_DESKTOP GDK_BACKEND QT_QPA_PLATFORM GTK_USE_PORTAL \
+    2>/dev/null || true
+fi
 
 case "$BASE" in
   xfce)

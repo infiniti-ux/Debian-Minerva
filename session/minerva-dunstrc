@@ -1,0 +1,23 @@
+#!/bin/sh
+# minerva-dunstrc — write the Aluminium-styled dunstrc once, if the user has
+# none. Used by the systemd user unit (ExecStartPre) and by the fallback
+# spawn path in minerva-shell-start, so both paths style identically.
+DC="${XDG_CONFIG_HOME:-$HOME/.config}/dunst"
+mkdir -p "$DC" 2>/dev/null || exit 0
+[ -f "$DC/dunstrc" ] && exit 0
+cat >"$DC/dunstrc" <<'DEOF'
+[global]
+    width = 380
+    height = 120
+    origin = top-right
+    offset = 14x54
+    notification_limit = 5
+    background = "#1f2231"
+    foreground = "#f0f1fa"
+    highlight = "#a80030"
+    font = Inter 10
+    corner_radius = 12
+    frame_color = "#2a2f40"
+    frame_width = 1
+    timeout = 6
+DEOF

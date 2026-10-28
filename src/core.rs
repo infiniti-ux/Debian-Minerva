@@ -9,7 +9,7 @@ use crate::json::{self, Value};
 use std::fs;
 use std::path::{Path, PathBuf};
 
-pub const VERSION: &str = "0.8.0";
+pub const VERSION: &str = "0.9.0";
 pub const DE_NAME: &str = "Debian Minerva";
 
 #[derive(Clone, Debug, PartialEq)]

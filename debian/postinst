@@ -1,0 +1,22 @@
+#!/bin/sh
+# debian-minerva postinst — system-wide desktop defaults on first configure.
+set -e
+case "$1" in
+  configure)
+    # System-wide default applications (a user's ~/.config/mimeapps.list
+    # still wins, per the freedesktop MIME/apps spec).
+    if [ ! -f /etc/xdg/mimeapps.list ]; then
+      mkdir -p /etc/xdg
+      cat > /etc/xdg/mimeapps.list <<'MEOF'
+[Default Applications]
+text/html=chromium.desktop
+x-scheme-handler/http=chromium.desktop
+x-scheme-handler/https=chromium.desktop
+text/plain=mousepad.desktop
+inode/directory=pcmanfm.desktop
+x-scheme-handler/file=pcmanfm.desktop
+MEOF
+    fi
+    ;;
+esac
+exit 0

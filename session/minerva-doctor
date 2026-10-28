@@ -115,6 +115,39 @@ for svc in dunst parcellite; do
   pgrep -x "$svc" >/dev/null 2>&1 && ok "$svc running" || warn "$svc not running (optional)"
 done
 
+echo "[platform contracts]"
+if [ -f /usr/share/xdg-desktop-portal/minerva-portals.conf ]; then
+  ok "portal backend preference installed (minerva-portals.conf)"
+else
+  warn "no minerva-portals.conf — sandboxed apps fall back to generic pickers"
+fi
+if [ "${XDG_CURRENT_DESKTOP:-}" = "Minerva" ]; then
+  ok "XDG_CURRENT_DESKTOP=Minerva"
+else
+  bad "XDG_CURRENT_DESKTOP='${XDG_CURRENT_DESKTOP:-unset}' — portals and OnlyShowIn will not match Minerva"
+fi
+for u in minerva-dunst minerva-parcellite minerva-polkit; do
+  [ -f "/usr/lib/systemd/user/$u.service" ] || warn "missing user unit: $u.service"
+done
+if [ -f /usr/lib/systemd/user-preset/90-minerva.preset ]; then
+  ok "user-unit vendor preset installed"
+else
+  warn "no vendor preset — user units need manual enabling per user"
+fi
+if [ -f /etc/xdg/mimeapps.list ]; then
+  ok "system MIME defaults present"
+else
+  warn "no /etc/xdg/mimeapps.list (postinst writes it on install)"
+fi
+if command -v systemctl >/dev/null 2>&1; then
+  for u in minerva-dunst minerva-parcellite minerva-polkit; do
+    if systemctl --user is-active --quiet "$u.service" 2>/dev/null; then
+      ok "$u.service active (systemd)"
+    else
+      warn "$u.service not active — fallback spawn path in use"
+    fi
+  done
+fi
 echo "[install consistency]"
 pkgv="$(dpkg -s debian-minerva 2>/dev/null | sed -n 's/^Version: //p')"
 webv="$(sed -n 's/.*Debian Minerva \([0-9.]\+\) — MIT.*/\1/p' /usr/share/minerva/web/js/apps.js 2>/dev/null | head -1)"
