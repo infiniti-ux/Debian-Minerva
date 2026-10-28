@@ -1,0 +1,18 @@
+name: ci
+on:
+  push:
+    branches: ['**']
+  pull_request:
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install build deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libx11-dev libxext-dev libxrender-dev libxcomposite-dev libxdamage-dev libxrandr-dev libxfixes-dev libxcursor-dev
+      - name: Cargo build (release)
+        run: cargo build --release --verbose
+      - name: Cargo test
+        run: cargo test --all
