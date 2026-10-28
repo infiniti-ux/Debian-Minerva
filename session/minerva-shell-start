@@ -49,30 +49,6 @@ pick_browser() {
 }
 BROWSER="$(pick_browser)"
 
-# ---- xfconf hardening (idempotent; xfce4-session brings the xfconf daemon) --
-xfce_setup() {
-  command -v xfconf-query >/dev/null 2>&1 || return 0
-  i=0
-  while [ "$i" -lt 20 ]; do
-    xfconf-query -c xfce4-session -p /general/SaveOnExit >/dev/null 2>&1 && break
-    i=$((i + 1)); sleep 0.5
-  done
-  set_one() {
-    # set_one <channel> <property> <value>  (only when absent)
-    xfconf-query -c "$1" -p "$2" >/dev/null 2>&1 && return 0
-    xfconf-query -c "$1" -p "$2" -t string -s "$3" --create >/dev/null 2>&1
-  }
-  set_one xfce4-session /general/SaveOnExit false
-  xfconf-query -c xfce4-session -p /general/SaveOnExit -t bool -s false --create >/dev/null 2>&1
-  set_one xfce4-keyboard-shortcuts /commands/custom/Super_L "minerva-ctl event launcher"
-  set_one xfce4-keyboard-shortcuts /commands/custom/Super_R "minerva-ctl event launcher"
-  set_one xfce4-keyboard-shortcuts "/commands/custom/<Primary><Alt>t" "minerva-ctl app terminal"
-  set_one xfce4-keyboard-shortcuts "/commands/custom/<Super>e" "minerva-ctl app files"
-  set_one xfce4-keyboard-shortcuts "/commands/custom/<Super>w" "minerva-ctl event overview"
-  log "xfconf shortcuts applied"
-}
-xfce_setup &
-
 CHROME_FLAGS="--no-first-run --no-default-browser-check --disable-session-crashed-bubble --disable-dev-shm-usage --password-store=basic --disable-translate --check-for-update-interval=31536000 --force-device-scale-factor=1"
 SHELL_PROFILE="$RT/shell-autostart"
 

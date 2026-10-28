@@ -95,6 +95,7 @@ cleanup() {
   log "session ending"
   [ -n "$WATCH_PID" ] && kill "$WATCH_PID" 2>/dev/null
   [ -n "$BASE_PID" ] && kill "$BASE_PID" 2>/dev/null
+  [ -n "${SHELL_START_PID:-}" ] && kill "$SHELL_START_PID" 2>/dev/null
   [ -n "$WM_WATCH_PID" ] && kill "$WM_WATCH_PID" 2>/dev/null
   [ -n "$ENFORCE_PID" ] && kill "$ENFORCE_PID" 2>/dev/null
   pkill -f "user-data-dir=$RT/shell-" 2>/dev/null
@@ -148,6 +149,40 @@ while [ "$i" -lt 50 ]; do
   i=$((i + 1)); sleep 0.2
 done
 [ "$i" -lt 50 ] || log "warning: daemon not healthy after 10 s"
+
+# ------------------------------------------------ xfconf per-channel defaults
+# Written before xfce4-session starts so the very first login already has
+# them (xfconf-query would need the xfconf daemon, which only exists once
+# the session is up — a chicken-and-egg the 0.6.0 release walked straight
+# into). Only created when absent; user edits always win.
+write_xfconf_defaults() {
+  XD="${XDG_CONFIG_HOME:-$HOME/.config}/xfce4/xfconf/xfce-perchannel-xml"
+  mkdir -p "$XD" 2>/dev/null || return 0
+  [ -f "$XD/xfce4-session.xml" ] || cat >"$XD/xfce4-session.xml" <<'XEOF'
+<?xml version="1.0" encoding="UTF-8"?>
+<channel name="xfce4-session" version="1.0">
+  <property name="general" type="empty">
+    <property name="SaveOnExit" type="bool" value="false"/>
+  </property>
+</channel>
+XEOF
+  [ -f "$XD/xfce4-keyboard-shortcuts.xml" ] || cat >"$XD/xfce4-keyboard-shortcuts.xml" <<'XEOF'
+<?xml version="1.0" encoding="UTF-8"?>
+<channel name="xfce4-keyboard-shortcuts" version="1.0">
+  <property name="commands" type="empty">
+    <property name="custom" type="empty">
+      <property name="Super_L" type="string" value="minerva-ctl event launcher"/>
+      <property name="Super_R" type="string" value="minerva-ctl event launcher"/>
+      <property name="&lt;Primary&gt;&lt;Alt&gt;t" type="string" value="minerva-ctl app terminal"/>
+      <property name="&lt;Super&gt;e" type="string" value="minerva-ctl app files"/>
+      <property name="&lt;Super&gt;w" type="string" value="minerva-ctl event overview"/>
+      <property name="override" type="bool" value="true"/>
+    </property>
+  </property>
+</channel>
+XEOF
+  log "xfconf per-channel defaults present at $XD"
+}
 
 # ------------------------------------------- mask XFCE parts we replace
 # xfce4-session autostarts its own panel/desktop/power-manager; Minerva
@@ -257,22 +292,12 @@ watch_wm() {
   done
 }
 
-CHROME_FLAGS="--no-first-run --no-default-browser-check --disable-session-crashed-bubble --disable-dev-shm-usage --password-store=basic --disable-translate --check-for-update-interval=31536000 --force-device-scale-factor=1"
-
-shell_window() {
-  log "shell surface (direct): $MINERVA_BROWSER --kiosk $URL"
-  case "$(basename "${MINERVA_BROWSER:-none}")" in
-    chromium|chromium-browser)
-      "$MINERVA_BROWSER" --kiosk --wm-class=minerva-shell --class=minerva-shell "$URL" \
-        --user-data-dir="$RT/shell-direct" $CHROME_FLAGS >>"$LOG" 2>&1 &
-      SHELL_PID=$! ;;
-    firefox-esr|firefox)
-      "$MINERVA_BROWSER" --kiosk "$URL" >>"$LOG" 2>&1 &
-      SHELL_PID=$! ;;
-    *)
-      "$MINERVA_BROWSER" "$URL" >>"$LOG" 2>&1 &
-      SHELL_PID=$! ;;
-  esac
+shell_start() {
+  # one launcher for every base: browser pick, kiosk flags, respawn loop and
+  # the loud self-check all live in minerva-shell-start
+  log "shell surface via minerva-shell-start"
+  minerva-shell-start >>"$LOG" 2>&1 &
+  SHELL_START_PID=$!
 }
 
 pick_browser() {
@@ -292,6 +317,7 @@ xsetroot -solid '#0b1020' 2>/dev/null
 case "$BASE" in
   xfce)
     log "base: xfce4-session + xfwm4 (wrapper mode)"
+    write_xfconf_defaults
     mask_autostart
     xprop -root -remove _NET_NUMBER_OF_DESKTOPS \
           -remove _NET_DESKTOP_NAMES \
@@ -302,6 +328,7 @@ case "$BASE" in
     WM_WATCH_PID=$!
     enforce_shell_surface &
     ENFORCE_PID=$!
+    shell_start
     ;;
   openbox)
     log "base: openbox (fallback wrapper mode)"
@@ -321,11 +348,11 @@ case "$BASE" in
     fi
     enforce_shell_surface &
     ENFORCE_PID=$!
+    shell_start
     ;;
   *)
     log "base: kiosk single-window ($MINERVA_BROWSER)"
-    SHELL_PID=""
-    shell_window
+    shell_start
     ;;
 esac
 
@@ -354,14 +381,8 @@ if [ -n "$BASE_PID" ]; then
     BASE_PID=$!
   done
 else
-  while :; do
-    wait "$SHELL_PID"
-    EXIT_CODE=$?
-    [ "$EXITING" = yes ] && break
-    log "shell surface exited code=$EXIT_CODE — respawning"
-    sleep 1
-    shell_window
-  done
+  wait "${SHELL_START_PID:-0}"
+  EXIT_CODE=$?
 fi
 log "session exit code=$EXIT_CODE"
 exit "$EXIT_CODE"

@@ -1,3 +1,18 @@
+debian-minerva (0.6.1) unstable; urgency=medium
+
+  * "mana aluminiumnya" — the shell surface no longer depends on each base
+    session's autostart implementation (xfce4-session skipped the autostart
+    entry, so logins landed on a bare XFCE-grey desktop). minerva-session
+    now starts minerva-shell-start DIRECTLY in every base branch (xfce,
+    openbox, kiosk); the autostart .desktop is gone.
+  * xfconf per-channel defaults (SaveOnExit=false, Super/Super+W/Ctrl+Alt+T/
+    Super+E shortcuts) are written as plain XML before xfce4-session starts
+    — no xfconf-daemon chicken-and-egg on first login.
+  * minerva-shell-start slimmed to: token wait, browser pick, kiosk launch,
+    respawn loop, loud self-check (report file + xmessage).
+
+ -- Minerva Team <minerva@localhost>  Wed, 28 Oct 2026 09:35:00 +0700
+
 debian-minerva (0.6.0) unstable; urgency=medium
 
   * WRAPPER BASE, by user directive: the session machinery is now delegated
