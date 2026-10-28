@@ -3,7 +3,7 @@ SHELL := /bin/bash
 PORT ?= 8080
 PREFIX ?= /usr/local
 
-.PHONY: build run test self-test preview clean install uninstall reference deb session qa test-shell test-session test-all
+.PHONY: build run test self-test preview clean install uninstall reference deb session qa test-shell test-session test-all wm-smoke
 
 build:
 	cargo build --release
@@ -25,6 +25,7 @@ reference:
 
 install: build
 	install -Dm755 target/release/minerva-sessiond $(DESTDIR)$(PREFIX)/bin/minerva-sessiond
+	install -Dm755 target/release/minerva-wm $(DESTDIR)$(PREFIX)/bin/minerva-wm
 	install -Dm755 session/minerva-session $(DESTDIR)$(PREFIX)/bin/minerva-session
 	install -Dm755 session/minerva-ctl $(DESTDIR)$(PREFIX)/bin/minerva-ctl
 	mkdir -p $(DESTDIR)$(PREFIX)/share/minerva/web
@@ -35,6 +36,7 @@ install: build
 
 uninstall:
 	rm -f $(DESTDIR)$(PREFIX)/bin/minerva-sessiond
+	rm -f $(DESTDIR)$(PREFIX)/bin/minerva-wm
 	rm -f $(DESTDIR)$(PREFIX)/bin/minerva-session
 	rm -f $(DESTDIR)$(PREFIX)/bin/minerva-ctl
 	rm -rf $(DESTDIR)$(PREFIX)/share/minerva
@@ -48,7 +50,10 @@ deb:
 
 # Run the full desktop session right here (needs X + openbox; falls back to cage)
 session: build
-	MINERVA_DAEMON=./target/release/minerva-sessiond MINERVA_WEBROOT=./web ./session/minerva-session
+	MINERVA_DAEMON=./target/release/minerva-sessiond MINERVA_WM=./target/release/minerva-wm MINERVA_WEBROOT=./web ./session/minerva-session
+
+wm-smoke: build
+	xvfb-run -a -s "-screen 0 1280x1024x24" ./target/release/minerva-wm --smoke
 
 clean:
 	cargo clean

@@ -14,7 +14,8 @@ rust-daemon|/usr/bin/minerva-sessiond|debian-minerva
 shell-surface|/usr/share/minerva/web/index.html|debian-minerva
 shell-launcher|/usr/bin/minerva-shell-start|debian-minerva
 session-manager|xfce4-session|xfce4-session
-window-manager|xfwm4|xfwm4
+native-wm|/usr/bin/minerva-wm|debian-minerva
+window-manager|/usr/bin/minerva-wm,xfwm4|xfwm4
 xfconf|xfconf-query|xfconf
 browser|chromium|chromium
 terminal|xterm|xterm

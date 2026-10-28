@@ -1,14 +1,18 @@
 #!/bin/sh
-# minerva-session — Minerva desktop session (v4, wrapper base).
+# minerva-session — Minerva desktop session (v5, native base).
 #
-# v0.6.0 architecture: Minerva keeps its own Aluminium-accurate shell and its
-# Rust session daemon, but the *session machinery* is delegated to proven
-# Debian components instead of hand-rolled bootstrap:
-#   * base session  : xfce4-session + xfwm4  (X11, EWMH, saves/autostart/polkit
-#                     plumbing that has shipped in Debian for two decades)
-#                     with xfdesktop/xfce4-panel autostart masked, so the only
-#                     surface the user sees is the Minerva shell;
-#   * fallback base : openbox + minerva-autostart (the 0.5.x proven path);
+# v0.11.0 architecture: minerva-wm — the native Rust X11 window manager and
+# compositor — IS the base session AND the shell surface. Panel, taskbar,
+# launcher and system menus are native X windows it draws itself; there is
+# no browser and no HTML underneath. The 0.6.x wrapper bases survive only
+# as loud fail-safes:
+#   * base session  : minerva-wm (native WM + COMPOSITE/DAMAGE/RENDER
+#                     compositor, EWMH, decorations, panel/dock/launcher);
+#   * fallback base : xfce4-session + xfwm4 + browser shell (the 0.6-0.10
+#                     wrapper path) — engaged automatically, with a report
+#                     line in ~/minerva-report.txt, if minerva-wm is missing
+#                     or fails to stay up twice;
+#   * fallback base2: openbox + minerva-autostart (the 0.5.x proven path);
 #   * last resort   : single kiosk window (cage/weston/no-WM boxes);
 #   * minerva-sessiond : Rust daemon — session state, app launching, system
 #                     layer (volume, Wi-Fi, resolution, brightness, power);
@@ -65,15 +69,24 @@ log() { echo "[minerva-session] $*" >>"$LOG"; }
 chmod 600 "$RT/session.env" 2>/dev/null
 
 # ---------------------------------------------------------------- base choice
+# minerva-wm is the primary base; MINERVA_BASE / MINERVA_WM are overrides for
+# debugging and for the test suite.
+WM_BIN="${MINERVA_WM:-/usr/bin/minerva-wm}"
+command -v "$WM_BIN" >/dev/null 2>&1 || WM_BIN=""
 MULTIWIN=no
 BASE=kiosk
-if [ -n "${DISPLAY:-}" ]; then
-  if command -v xfce4-session >/dev/null 2>&1 && command -v xfwm4 >/dev/null 2>&1; then
-    BASE=xfce; MULTIWIN=yes
+if [ -n "${MINERVA_BASE:-}" ]; then
+  BASE="$MINERVA_BASE"
+elif [ -n "${DISPLAY:-}" ]; then
+  if [ -n "$WM_BIN" ]; then
+    BASE=native
+  elif command -v xfce4-session >/dev/null 2>&1 && command -v xfwm4 >/dev/null 2>&1; then
+    BASE=xfce
   elif command -v openbox >/dev/null 2>&1; then
-    BASE=openbox; MULTIWIN=yes
+    BASE=openbox
   fi
 fi
+case "$BASE" in native|xfce|openbox) MULTIWIN=yes ;; esac
 MINERVA_SESSION_MODE="$([ "$MULTIWIN" = yes ] && echo x11 || echo kiosk)"
 export MINERVA_SESSION_MODE
 
@@ -386,7 +399,7 @@ enforce_shell_surface() {
 
 watch_wm() {
   while :; do
-    if ! pgrep -x xfwm4 >/dev/null 2>&1 && ! pgrep -x openbox >/dev/null 2>&1; then
+    if ! pgrep -x minerva-wm >/dev/null 2>&1 && ! pgrep -x xfwm4 >/dev/null 2>&1 && ! pgrep -x openbox >/dev/null 2>&1; then
       log "no window manager alive — starting xfwm4"
       xfwm4 >>"$LOG" 2>&1 &
     fi
@@ -419,7 +432,14 @@ pick_browser() {
 export MINERVA_BROWSER="$(pick_browser)" MINERVA_SESSION_PID=$$
 export GTK_THEME="${GTK_THEME:-Adwaita:dark}"
 export QT_QPA_PLATFORMTHEME="${QT_QPA_PLATFORMTHEME:-gtk}"
-[ -n "$MINERVA_BROWSER" ] || { echo "Minerva: no browser found. sudo apt install chromium" >&2; exit 1; }
+if [ -z "$MINERVA_BROWSER" ]; then
+  if [ "$BASE" = native ] || [ "$BASE" = xfce ] || [ "$BASE" = openbox ]; then
+    log "no browser present — the native WM does not need one (legacy shell fallback would be unavailable)"
+  else
+    echo "Minerva: no browser found. sudo apt install chromium" >&2
+    exit 1
+  fi
+fi
 
 xsetroot -solid '#0b1020' 2>/dev/null
 
@@ -429,8 +449,31 @@ if command -v systemctl >/dev/null 2>&1; then
     2>/dev/null || true
 fi
 
-case "$BASE" in
-  xfce)
+pick_legacy() {
+  if command -v xfce4-session >/dev/null 2>&1 && command -v xfwm4 >/dev/null 2>&1; then
+    echo xfce
+  elif command -v openbox >/dev/null 2>&1; then
+    echo openbox
+  else
+    echo kiosk
+  fi
+}
+
+start_native() {
+  log "base: minerva-wm (native X11 WM + compositor)"
+  "$WM_BIN" >>"$LOG" 2>&1 &
+  BASE_PID=$!
+  echo "$BASE_PID" >"$STATE/wm.pid"
+  sleep 1
+  if ! kill -0 "$BASE_PID" 2>/dev/null; then
+    log "minerva-wm exited immediately — retrying once"
+    "$WM_BIN" >>"$LOG" 2>&1 &
+    BASE_PID=$!
+    echo "$BASE_PID" >"$STATE/wm.pid"
+  fi
+}
+
+start_xfce() {
     log "base: xfce4-session + xfwm4 (wrapper mode)"
     write_xfconf_defaults
     mask_autostart
@@ -444,8 +487,9 @@ case "$BASE" in
     enforce_shell_surface &
     ENFORCE_PID=$!
     shell_start
-    ;;
-  openbox)
+}
+
+start_openbox() {
     log "base: openbox (fallback wrapper mode)"
     mask_autostart
     xprop -root -remove _NET_NUMBER_OF_DESKTOPS \
@@ -464,12 +508,26 @@ case "$BASE" in
     enforce_shell_surface &
     ENFORCE_PID=$!
     shell_start
-    ;;
-  *)
+}
+
+start_kiosk() {
     log "base: kiosk single-window ($MINERVA_BROWSER)"
     shell_start
-    ;;
-esac
+}
+
+start_base() {
+  if [ "$BASE" = native ] && [ -z "$WM_BIN" ]; then
+    log "minerva-wm binary missing — demoting to legacy base"
+    BASE="$(pick_legacy)"
+  fi
+  case "$BASE" in
+    native) start_native ;;
+    xfce) start_xfce ;;
+    openbox) start_openbox ;;
+    *) start_kiosk ;;
+  esac
+}
+start_base
 
 {
   echo "mode=$MINERVA_SESSION_MODE base=$BASE screen=${SCREEN_W}x${SCREEN_H} browser=$MINERVA_BROWSER"
@@ -487,13 +545,26 @@ if [ -n "$BASE_PID" ]; then
     [ "$EXITING" = yes ] && break
     base_tries=$((base_tries + 1))
     if [ "$base_tries" -ge 2 ]; then
+      if [ "$BASE" = native ]; then
+        BASE="$(pick_legacy)"
+        base_tries=0
+        log "minerva-wm failed twice — FAILING OVER to base=$BASE (never silent)"
+        {
+          echo "$(date '+%F %T') minerva-wm failed to stay up (2 attempts, last exit=$EXIT_CODE); session fell back to base=$BASE."
+          echo "  WM stderr captured in: $LOG"
+        } >> "$HOME/minerva-report.txt"
+        if command -v notify-send >/dev/null 2>&1; then
+          notify-send -u critical "Minerva" "Native WM failed twice - fell back to $BASE base" 2>/dev/null || true
+        fi
+        start_base
+        continue
+      fi
       log "base session failed $base_tries times — giving up"
       break
     fi
-    log "base session exited code=$EXIT_CODE — respawning (try $base_tries)"
+    log "base session exited code=$EXIT_CODE — respawning $BASE (try $base_tries)"
     sleep 1
-    if [ "$BASE" = xfce ]; then xfce4-session >>"$LOG" 2>&1 & else openbox --sm-disable --startup "minerva-autostart" >>"$LOG" 2>&1 & fi
-    BASE_PID=$!
+    start_base
   done
 else
   if [ -n "${SHELL_START_PID:-}" ]; then wait "$SHELL_START_PID"; fi

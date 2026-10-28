@@ -59,8 +59,10 @@ elif pgrep -x openbox >/dev/null 2>&1; then
 else
   bad "no base session running (xfce4-session/openbox) — logout and pick Minerva again"
 fi
-if pgrep -x xfwm4 >/dev/null 2>&1 || pgrep -x openbox >/dev/null 2>&1; then
-  ok "window manager alive (xfwm4/openbox)"
+if pgrep -x minerva-wm >/dev/null 2>&1; then
+  ok "window manager alive (minerva-wm, native compositor)"
+elif pgrep -x xfwm4 >/dev/null 2>&1 || pgrep -x openbox >/dev/null 2>&1; then
+  ok "window manager alive (legacy fallback base: xfwm4/openbox)"
 else
   bad "no window manager — app windows unmanaged"
 fi

@@ -1,5 +1,8 @@
 #!/bin/sh
-# session-env-test.sh — full-session integration test with stub binaries.
+# session-env-test.sh — full-session integration test with stub binaries,
+# exercising the LEGACY fail-safe path (MINERVA_WM points at a nonexistent
+# binary, so the session must fall through to xfce4-session + shell exactly
+# like the 0.6-0.10 releases; native-test.sh covers the primary native path).
 #
 # Runs the REAL minerva-session for a few seconds inside a throwaway HOME
 # with a PATH of stubs: a python3 HTTP stub daemon (answers /api/v1/health
@@ -77,6 +80,7 @@ chmod +x "$BIN/xrandr"
 export PATH="$BIN:$PATH"
 export DISPLAY=":99"
 export MINERVA_DAEMON="$BIN/minerva-sessiond"
+export MINERVA_WM=/nonexistent/minerva-wm
 
 setsid sh "$SRC" >/dev/null 2>&1 &
 PGID=$!

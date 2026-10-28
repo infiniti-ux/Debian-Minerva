@@ -25,7 +25,7 @@
 use std::collections::HashMap;
 use std::ffi::{CStr, CString};
 use std::fs;
-use std::os::raw::{c_char, c_int, c_long, c_short, c_uchar, c_uint, c_ushort, c_void};
+use std::os::raw::{c_char, c_int, c_long, c_short, c_uchar, c_uint, c_ulong, c_ushort, c_void};
 use std::path::PathBuf;
 use std::process::Command;
 use std::ptr;
@@ -504,7 +504,21 @@ pub union XEvent {
     pub property: XPropertyEvent,
     pub client: XClientMessageEvent,
     pub damage: XDamageNotifyEvent,
+    pub mapping: XMappingEventFfi,
     pub pad: [c_long; 24],
+}
+
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub struct XMappingEventFfi {
+    pub type_: c_int,
+    pub serial: c_ulong,
+    pub send_event: Bool,
+    pub display: *mut Display,
+    pub window: Window,
+    pub first_keycode: c_int,
+    pub request: c_int,
+    pub count: c_int,
 }
 
 // ------------------------------------------------------------------- xproto
@@ -2047,11 +2061,14 @@ impl Wm {
     }
 
     unsafe fn unmanage(&mut self, win: Window) {
-        let c = match self.clients.remove(&win) {
-            Some(c) => c,
+        let frame = match self.clients.get(&win) {
+            Some(c) => c.frame,
             None => return,
         };
-        self.comp_remove_window(win, c.frame);
+        // comp cleanup must run while the client is still in the map (it
+        // owns the damage ids), then the frame goes
+        self.comp_remove_window(win, frame);
+        let c = self.clients.remove(&win).unwrap();
         XDestroyWindow(self.dpy, c.frame);
         self.stack.retain(|w| *w != win);
         if self.focus == win {
@@ -2333,6 +2350,7 @@ impl Wm {
         if iconic {
             XUnmapWindow(self.dpy, c.frame);
             c.mapped = false;
+            self.comp_invalidate(win);
             prop_set_longs(self.dpy, win, self.a.wm_state, &[IconicState, None_ as c_long]);
             if self.focus == win {
                 self.focus = 0;
@@ -2349,6 +2367,7 @@ impl Wm {
         } else {
             c.mapped = true;
             XMapWindow(self.dpy, c.frame);
+            self.comp_invalidate(win);
             prop_set_longs(self.dpy, win, self.a.wm_state, &[NormalState, None_ as c_long]);
         }
         self.update_wm_state_atoms(win);
@@ -2421,11 +2440,13 @@ impl Wm {
             if let Some(c) = self.clients.get(&w) {
                 if show && !c.mapped {
                     XMapWindow(self.dpy, c.frame);
+                    self.comp_invalidate(w);
                     if let Some(c2) = self.clients.get_mut(&w) {
                         c2.mapped = true;
                     }
                 } else if !show && c.mapped && !c.iconic {
                     XUnmapWindow(self.dpy, c.frame);
+                    self.comp_invalidate(w);
                     if let Some(c2) = self.clients.get_mut(&w) {
                         c2.mapped = false;
                     }
@@ -2527,12 +2548,12 @@ impl Wm {
                 ButtonReleaseMask | ButtonPressMask | PointerMotionMask,
                 &mut e,
             );
-            let t = *(e.as_mut_ptr_any());
+            let t = e.any;
             if t.type_ == ButtonRelease {
                 break;
             }
             if t.type_ == MotionNotify {
-                let m = *(e.as_mut_ptr_motion());
+                let m = e.motion;
                 let dx = m.x_root - start_x;
                 let dy = m.y_root - start_y;
                 if moving {
@@ -2682,11 +2703,13 @@ impl Wm {
                 if let Some(c) = self.clients.get(&win) {
                     if show && !c.mapped {
                         XMapWindow(self.dpy, c.frame);
+                        self.comp_invalidate(win);
                         if let Some(c2) = self.clients.get_mut(&win) {
                             c2.mapped = true;
                         }
                     } else if !show && c.mapped {
                         XUnmapWindow(self.dpy, c.frame);
+                        self.comp_invalidate(win);
                         if let Some(c2) = self.clients.get_mut(&win) {
                             c2.mapped = false;
                         }
@@ -3861,8 +3884,11 @@ impl Wm {
                 hgt as c_uint,
             );
         }
-        if let Some(p) = self.popup.as_ref() {
-            let (pwin, px, py, pw, ph) = (p.win, p.x, p.y, p.w, p.h);
+        let pdata = self
+            .popup
+            .as_ref()
+            .map(|p| (p.win, p.x, p.y, p.w, p.h));
+        if let Some((pwin, px, py, pw, ph)) = pdata {
             let e = self.comp_windows.get(&pwin).cloned().unwrap_or((0, 0, 0));
             let pic = if e.1 != 0 && e.2 != 0 {
                 e.2
@@ -4398,7 +4424,15 @@ impl Wm {
             }
             MappingNotify => {
                 let mut m: XMappingEvent = std::mem::zeroed();
-                m.type_ = MappingNotify;
+                let src = ev.mapping;
+                m.type_ = src.type_;
+                m.serial = src.serial;
+                m.send_event = src.send_event;
+                m.display = src.display;
+                m.window = src.window;
+                m.first_keycode = src.first_keycode;
+                m.request = src.request;
+                m.count = src.count;
                 XRefreshKeyboardMapping(self.dpy, &mut m);
             }
             SelectionClear => {

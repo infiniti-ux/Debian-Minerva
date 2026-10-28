@@ -34,9 +34,22 @@ jobs:
         shell: bash
         run: |
           cat /tmp/log-build.txt /tmp/log-test.txt /tmp/log-smoke.txt 2>/dev/null > /tmp/log-all.txt || true
-          grep -E '^(error|warning: unused|thread|FAIL)' /tmp/log-all.txt | head -80 | while IFS= read -r line; do
-            echo "::error title=build::${line}"
-          done
+          python3 - <<'PY'
+          import re
+          txt = open('/tmp/log-all.txt').read()
+          blocks = re.split(r'\n(?=error)', txt)
+          n = 0
+          for b in blocks:
+              if not b.startswith('error') and 'smoke: FAIL' not in b and not b.startswith('thread'):
+                  continue
+              msg = b.strip()[:1200].replace('\n', '%0A').replace(':', '%3A').replace(',', '%2C')
+              print(f"::error title=cargo/smoke error {n}::{msg}")
+              n += 1
+              if n >= 30:
+                  break
+          if n == 0:
+              print("::error title=cargo::build failed, see ci/build-log.txt")
+          PY
           mkdir -p ci
           {
             echo "# last failing CI log — $(date -u +%FT%TZ) run ${{ github.run_id }}"
@@ -53,3 +66,4 @@ jobs:
             git commit -m "ci: publish failing build log [skip ci]"
             git push origin "HEAD:${{ github.ref_name }}" || echo "log push refused (token read-only) — annotations above are the fallback"
           fi
+          exit 0

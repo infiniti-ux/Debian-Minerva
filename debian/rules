@@ -14,6 +14,7 @@ override_dh_auto_test:
 
 override_dh_auto_install:
 	install -Dm755 target/release/minerva-sessiond debian/debian-minerva/usr/bin/minerva-sessiond
+	install -Dm755 target/release/minerva-wm debian/debian-minerva/usr/bin/minerva-wm
 	install -Dm755 session/minerva-session debian/debian-minerva/usr/bin/minerva-session
 	install -Dm755 session/minerva-ctl debian/debian-minerva/usr/bin/minerva-ctl
 	install -Dm755 session/minerva-doctor debian/debian-minerva/usr/bin/minerva-doctor

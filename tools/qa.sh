@@ -18,5 +18,10 @@ done
 grep -n 'wait "\${SHELL_START_PID:-0}"' session/minerva-session && fail=1
 grep -n 'animation: pop2 ' web/css/minerva.css && fail=1
 grep -n "\$('#launcher-input').focus()" web/js/shell.js && fail=1
+# version coherence: the native WM and the crate must agree
+CRATE_V="$(sed -n 's/^version = "\(.*\)"/\1/p' Cargo.toml | head -1)"
+grep -q "pub const VERSION: &str = \"$CRATE_V\"" src/bin/minerva-wm.rs || { echo "qa: minerva-wm VERSION does not match Cargo.toml ($CRATE_V)"; fail=1; }
+grep -q "pub const VERSION: &str = \"$CRATE_V\"" src/core.rs || { echo "qa: core.rs VERSION does not match Cargo.toml ($CRATE_V)"; fail=1; }
+
 if [ "$fail" = 0 ]; then echo "qa: ALL GATES PASSED"; else echo "qa: GATES FAILED"; fi
 exit "$fail"

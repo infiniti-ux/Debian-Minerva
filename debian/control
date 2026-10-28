@@ -2,15 +2,15 @@ Source: debian-minerva
 Section: x11
 Priority: optional
 Maintainer: Debian Minerva contributors <minerva@example.org>
-Build-Depends: debhelper-compat (= 13), cargo, rustc
+Build-Depends: debhelper-compat (= 13), cargo, rustc, libx11-dev, libxext-dev, libxrender-dev, libxcomposite-dev, libxdamage-dev, libxfixes-dev
 Standards-Version: 4.6.2
 Rules-Requires-Root: no
 Homepage: https://github.com/infiniti-ux/Debian-Minerva
 
 Package: debian-minerva
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}, xfce4-session, xfwm4, xfconf, chromium, curl, x11-utils, wmctrl, xterm
-Recommends: openbox, xfce4-screensaver, xfce4-power-manager, mate-polkit, xdg-desktop-portal, xdg-desktop-portal-gtk, network-manager, x11-xserver-utils, dbus-x11, dex, dunst, xfce4-clipman, scrot, open-vm-tools-desktop,
+Depends: ${shlibs:Depends}, ${misc:Depends}, curl, x11-utils, xterm
+Recommends: xfce4-session, xfwm4, xfconf, chromium, wmctrl, openbox, xfce4-screensaver, xfce4-power-manager, mate-polkit, xdg-desktop-portal, xdg-desktop-portal-gtk, network-manager, x11-xserver-utils, dbus-x11, dex, dunst, xfce4-clipman, scrot, open-vm-tools-desktop,
  pcmanfm, mousepad, viewnior, xarchiver, galculator, atril, xfce4-terminal
 Suggests: cage, weston, ffmpeg, orca, system-config-printer, at-spi2-core
 Description: Debian Minerva desktop environment (Rust core, real X11 session)
