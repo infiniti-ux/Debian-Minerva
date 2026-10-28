@@ -50,7 +50,7 @@
 
   function defaultState() {
     return {
-      de: 'Debian Minerva', version: '0.5.6', seq: 1,
+      de: 'Debian Minerva', version: '0.5.7', seq: 1,
       theme: 'light', accent: '#a80030', wallpaper: 'swirl', scale: 1,
       volume: 0.65, brightness: 0.82,
       active_workspace: 0, show_overview: false, show_launcher: false,
@@ -1157,6 +1157,7 @@
     }
     if (X11) {
       try { REAL_APPS = await API.desktopApps(); } catch (e) {}
+      if (!REAL_APPS.length) toast('No installed .desktop apps found — launcher lists built-ins only');
       startPolling();
       refreshRunning();
     }

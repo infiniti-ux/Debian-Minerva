@@ -104,6 +104,21 @@ for svc in dunst parcellite; do
   pgrep -x "$svc" >/dev/null 2>&1 && ok "$svc running" || warn "$svc not running (optional)"
 done
 
+echo "[install consistency]"
+pkgv="$(dpkg -s debian-minerva 2>/dev/null | sed -n 's/^Version: //p')"
+webv="$(sed -n 's/.*Debian Minerva \([0-9.]\+\) — MIT.*/\1/p' /usr/share/minerva/web/js/apps.js 2>/dev/null | head -1)"
+if [ -n "$pkgv" ] && [ -n "$webv" ]; then
+  case "$pkgv" in "$webv"*) ok "package $pkgv matches shipped web assets $webv" ;;
+    *) bad "package $pkgv but web assets $webv — half-upgraded install, rebuild+reinstall the .deb" ;; esac
+else
+  warn "could not compare package/web versions (pkg='$pkgv' web='$webv')"
+fi
+if [ -f "$STATE/ready" ]; then
+  ok "session ready file:"; sed 's/^/        /' "$STATE/ready"
+else
+  warn "no ready file at $STATE/ready — session script older than 0.5.7?"
+fi
+
 echo "[logs]"
 if [ -f "$LOG" ]; then
   ok "session log: $LOG"

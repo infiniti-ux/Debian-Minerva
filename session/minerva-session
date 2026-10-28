@@ -286,7 +286,12 @@ enforce_shell_surface() {
       if [ "$t" = "Minerva" ]; then
         wmctrl -i -r 0x$id -b add,below,skip_taskbar,skip_pager 2>/dev/null
         wmctrl -i -r 0x$id -b add,fullscreen 2>/dev/null
-        wmctrl -i -r 0x$id -e 0,0,0,"$SCREEN_W","$SCREEN_H" 2>/dev/null
+        # geometry pin ONLY when the fullscreen state did not take effect —
+        # re-applying -e to an already-fullscreen window makes openbox
+        # reconfigure it every tick (visible flicker / input stalls).
+        if ! xprop -id 0x$id _NET_WM_STATE 2>/dev/null | grep -q FULLSCREEN; then
+          wmctrl -i -r 0x$id -e 0,0,0,"$SCREEN_W","$SCREEN_H" 2>/dev/null
+        fi
       fi
     done
     sleep 3
@@ -380,6 +385,11 @@ if [ "$MULTIWIN" = yes ]; then
   # paint the root window before the shell surface maps (no flash of grey)
   xsetroot -solid '#0b1020' 2>/dev/null
   shell_window
+  {
+    echo "mode=$MINERVA_SESSION_MODE screen=${SCREEN_W}x${SCREEN_H} browser=$BROWSER"
+    echo "daemon_pid=$(cat "$PIDFILE" 2>/dev/null) wm_pid=$(cat "$STATE/wm.pid" 2>/dev/null)"
+    echo "ready_at=$(date '+%Y-%m-%d %H:%M:%S')"
+  } >"$STATE/ready"
   enforce_shell_surface &
   ENFORCE_PID=$!
   log "shell-surface enforcer pid=$ENFORCE_PID"

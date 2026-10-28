@@ -1,3 +1,17 @@
+debian-minerva (0.5.7) unstable; urgency=medium
+
+  * Enforcer no longer fights the window manager: the wmctrl geometry pin is
+    applied only while the fullscreen state is missing (re-applying -e to an
+    already-fullscreen window made openbox reconfigure the shell every tick
+    — flicker and input stalls, i.e. "doesnt work at all").
+  * Session writes a one-line ready file (mode, screen, pids, timestamp);
+    minerva-doctor prints it plus a package-vs-web-assets version check so a
+    half-upgraded install can never masquerade as a broken DE again.
+  * Shell says out loud when a real session reports zero .desktop apps
+    instead of silently showing a short launcher.
+
+ -- Minerva Team <minerva@localhost>  Wed, 28 Oct 2026 08:40:00 +0700
+
 debian-minerva (0.5.6) unstable; urgency=medium
 
   * THE TOY-MODE KILLER. 0.5.5 exported MINERVA_SESSION_MODE *after* the
