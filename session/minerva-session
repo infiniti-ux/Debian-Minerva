@@ -183,7 +183,57 @@ XEOF
   </property>
 </channel>
 XEOF
-  log "xfconf per-channel defaults present at $XD"
+  cat >"$XD/xfwm4.xml" <<'XEOF'
+<?xml version="1.0" encoding="UTF-8"?>
+<channel name="xfwm4" version="1.0">
+  <property name="general" type="empty">
+    <property name="theme" type="string" value="Minerva"/>
+    <property name="button_layout" type="string" value="|HMC"/>
+    <property name="placement_mode" type="string" value="mouse"/>
+    <property name="use_compositing" type="bool" value="true"/>
+    <property name="show_frame_shadow" type="bool" value="true"/>
+    <property name="show_popup_shadow" type="bool" value="true"/>
+    <property name="show_dock_shadow" type="bool" value="false"/>
+    <property name="title_alignment" type="string" value="center"/>
+    <property name="frame_opacity" type="int" value="100"/>
+    <property name="activate_action" type="string" value="bring"/>
+    <property name="focus_new" type="bool" value="true"/>
+    <property name="snap_to_border" type="bool" value="true"/>
+    <property name="snap_to_windows" type="bool" value="false"/>
+    <property name="wrap_windows" type="bool" value="false"/>
+    <property name="tile_on_move" type="bool" value="true"/>
+    <property name="mousewheel_rollup" type="bool" value="false"/>
+    <property name="scroll_workspaces" type="bool" value="false"/>
+    <property name="raise_on_click" type="bool" value="true"/>
+    <property name="double_click_action" type="string" value="maximize"/>
+    <property name="easy_click" type="string" value="Alt"/>
+    <property name="workspace_count" type="int" value="4"/>
+  </property>
+</channel>
+XEOF
+  cat >"$XD/xsettings.xml" <<'XEOF'
+<?xml version="1.0" encoding="UTF-8"?>
+<channel name="xsettings" version="1.0">
+  <property name="Net" type="empty">
+    <property name="ThemeName" type="string" value="Adwaita-dark"/>
+    <property name="IconThemeName" type="string" value="Adwaita"/>
+    <property name="CursorThemeName" type="string" value="Adwaita"/>
+    <property name="DoubleClickTime" type="int" value="400"/>
+  </property>
+  <property name="Gtk" type="empty">
+    <property name="DecorationLayout" type="string" value=":minimize,maximize,close"/>
+    <property name="FontName" type="string" value="Sans 10"/>
+    <property name="CursorThemeSize" type="int" value="24"/>
+  </property>
+  <property name="Xft" type="empty">
+    <property name="Antialias" type="int" value="1"/>
+    <property name="Hinting" type="int" value="1"/>
+    <property name="HintStyle" type="string" value="hintslight"/>
+    <property name="RGBA" type="string" value="rgb"/>
+  </property>
+</channel>
+XEOF
+  log "xfconf defaults at $XD (xfwm4/xsettings forced every login; session/keys if absent)"
 }
 
 # ------------------------------------------- mask XFCE parts we replace
@@ -296,6 +346,11 @@ watch_wm() {
       log "no window manager alive — starting xfwm4"
       xfwm4 >>"$LOG" 2>&1 &
     fi
+    if pgrep -x xfdesktop >/dev/null 2>&1 || pgrep -x xfce4-panel >/dev/null 2>&1; then
+      log "leaked XFCE surface — killing (only the Minerva shell may draw)"
+      pkill -x xfdesktop 2>/dev/null
+      pkill -x xfce4-panel 2>/dev/null
+    fi
     sleep 4
   done
 }
@@ -318,6 +373,8 @@ pick_browser() {
   echo ""
 }
 export MINERVA_BROWSER="$(pick_browser)" MINERVA_SESSION_PID=$$
+export GTK_THEME="${GTK_THEME:-Adwaita:dark}"
+export QT_QPA_PLATFORMTHEME="${QT_QPA_PLATFORMTHEME:-gtk}"
 [ -n "$MINERVA_BROWSER" ] || { echo "Minerva: no browser found. sudo apt install chromium" >&2; exit 1; }
 
 xsetroot -solid '#0b1020' 2>/dev/null

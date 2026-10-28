@@ -21,6 +21,9 @@ override_dh_auto_install:
 	install -Dm755 session/minerva-shell-start debian/debian-minerva/usr/bin/minerva-shell-start
 	install -Dm755 session/minerva-bootstrap debian/debian-minerva/usr/bin/minerva-bootstrap
 	install -Dm755 session/minerva-verify debian/debian-minerva/usr/bin/minerva-verify
+	install -Dm644 session/xresources debian/debian-minerva/usr/share/minerva/xresources
+	mkdir -p debian/debian-minerva/usr/share/themes
+	cp -a theme/Minerva debian/debian-minerva/usr/share/themes/Minerva
 	mkdir -p debian/debian-minerva/usr/share/minerva/web
 	cp -r web/. debian/debian-minerva/usr/share/minerva/web/
 	install -Dm644 session/openbox/menu.xml debian/debian-minerva/usr/share/minerva/openbox/menu.xml
