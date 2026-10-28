@@ -50,7 +50,7 @@
 
   function defaultState() {
     return {
-      de: 'Debian Minerva', version: '0.5.5', seq: 1,
+      de: 'Debian Minerva', version: '0.5.6', seq: 1,
       theme: 'light', accent: '#a80030', wallpaper: 'swirl', scale: 1,
       volume: 0.65, brightness: 0.82,
       active_workspace: 0, show_overview: false, show_launcher: false,
@@ -541,6 +541,7 @@
     renderBattery();
   }
   function batteryFill() {
+    if (!battery.present && API.backend === 'rust') return '#22c55e';
     if (battery.charging) return '#22c55e';
     if (battery.level <= 0.20) return '#ef4444';
     if (battery.level <= 0.40) return '#f59e0b';
@@ -550,7 +551,8 @@
     var holder = $('#sb-battery [data-battery]');
     if (!holder) return;
     var pct = Math.round(battery.level * 100);
-    var w = Math.max(2, Math.round(battery.level * 15));
+    var hasBatt = battery.present || API.backend !== 'rust';
+    var w = hasBatt ? Math.max(2, Math.round(battery.level * 15)) : 15;
     var light = document.body.classList.contains('wallpaper-light');
     var outline = light ? 'rgba(20,22,34,.55)' : 'rgba(255,255,255,.72)';
     holder.innerHTML = '<svg class="battery-svg" viewBox="0 0 26 14" width="26" height="14" aria-hidden="true">' +
@@ -1128,7 +1130,7 @@
     wire();
     I.hydrate(document);
     await API.probe();
-    X11 = API.sessionMode === 'x11';
+    X11 = API.backend === 'rust' && API.sessionMode !== 'kiosk';
     document.body.classList.toggle('session-x11', X11);
 
     // When the Rust daemon owns the state, a terminal command may mutate the

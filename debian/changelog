@@ -1,3 +1,26 @@
+debian-minerva (0.5.6) unstable; urgency=medium
+
+  * THE TOY-MODE KILLER. 0.5.5 exported MINERVA_SESSION_MODE *after* the
+    daemon had already snapshotted its environment, so on every real VM the
+    daemon ran in "dev" mode: exec/win_op refused, the shell fell back to its
+    offline catalogue and the whole desktop behaved like a static mock-up
+    ("UI cuman hiasan"). The mode + screen detection now runs before
+    start_daemon, and the shell trusts any live Rust daemon that is not in
+    kiosk mode, so real app launching / real dock mirroring can never be
+    lost to an env-ordering accident again.
+  * Shell surface can no longer float: the enforcer pins exact screen
+    geometry via wmctrl -e on top of the fullscreen hint; chromium runs with
+    --force-device-scale-factor=1 for deterministic VM pixel mapping.
+  * minerva-doctor gains two evidence checks: daemon-vs-env session mode
+    agreement, and shell window geometry vs the xrandr screen.
+  * Battery icon on mains-only machines is a neutral full green instead of
+    a red empty outline next to the AC pill.
+  * Recommends open-vm-tools-desktop so VMware guests auto-fit resolution
+    (black letterbox bars around the session were the guest keeping a small
+    fixed resolution).
+
+ -- Minerva Team <minerva@localhost>  Wed, 28 Oct 2026 08:10:00 +0700
+
 debian-minerva (0.5.5) unstable; urgency=medium
 
   * 100-fix pass across the shell: bugfixes + one animation language

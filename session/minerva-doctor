@@ -39,6 +39,18 @@ else
   bad "cannot probe daemon (no MINERVA_API or curl)"
 fi
 
+echo "[mode consistency]"
+if [ -n "${MINERVA_API:-}" ] && command -v curl >/dev/null 2>&1; then
+  rep="$(curl -fsS "$MINERVA_API/health" 2>/dev/null | sed -n 's/.*"session_mode":"\([^"]*\)".*/\1/p')"
+  if [ -n "$rep" ] && [ "$rep" = "${MINERVA_SESSION_MODE:-}" ]; then
+    ok "daemon agrees on session mode ($rep)"
+  else
+    bad "daemon session_mode='$rep' vs env '${MINERVA_SESSION_MODE:-unset}' — the 0.5.5 toy-mode bug or a daemon restarted outside the session"
+  fi
+else
+  warn "cannot compare session mode (no API or curl)"
+fi
+
 echo "[window manager]"
 if pgrep -x openbox >/dev/null 2>&1; then ok "openbox running"; else bad "openbox NOT running — app windows unmanaged"; fi
 if command -v wmctrl >/dev/null 2>&1 && command -v xprop >/dev/null 2>&1; then
@@ -57,6 +69,24 @@ if command -v xprop >/dev/null 2>&1 && xprop -root _NET_CLIENT_LIST 2>/dev/null 
   [ "$shell_found" = yes ] && ok "fullscreen shell surface window found" || bad "shell surface window NOT in client list"
 else
   warn "no X client list (WM not running?)"
+fi
+
+echo "[geometry]"
+if command -v xrandr >/dev/null 2>&1 && command -v wmctrl >/dev/null 2>&1; then
+  dims="$(xrandr 2>/dev/null | awk '/\*/ {print $1; exit}')"
+  geo="$(wmctrl -l -G 2>/dev/null | awk '$NF == "Minerva" {print $3, $4, $5, $6; exit}')"
+  if [ -n "$geo" ] && [ -n "$dims" ]; then
+    set -- $geo
+    if [ "$1" = "0" ] && [ "$2" = "0" ] && [ "$3" = "${dims%%x*}" ] && [ "$4" = "${dims##*x}" ]; then
+      ok "shell surface covers the screen ($dims)"
+    else
+      bad "shell surface geometry $geo does not cover screen $dims — dock/top bar will look floating"
+    fi
+  else
+    warn "could not read shell geometry (window title Minerva not listed?)"
+  fi
+else
+  warn "xrandr/wmctrl missing — geometry check skipped"
 fi
 
 echo "[browser + apps]"
