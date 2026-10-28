@@ -24,6 +24,8 @@ notification-daemon|dunst|dunst
 clipboard|parcellite|parcellite
 polkit-agent|polkit-gnome-authentication-agent-1|policykit-1-gnome
 screenshot|scrot|scrot
+auth-lock|xfce4-screensaver-command|xfce4-screensaver
+power-manager|xfce4-power-manager|xfce4-power-manager
 display-tools|xrandr|x11-xserver-utils
 wm-tools|wmctrl|wmctrl
 fonts|fc-list|fontconfig
