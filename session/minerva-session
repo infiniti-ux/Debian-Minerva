@@ -122,8 +122,16 @@ fi
 export XDG_CURRENT_DESKTOP=Minerva
 systemctl --user import-environment DISPLAY XDG_CURRENT_DESKTOP DBUS_SESSION_BUS_ADDRESS 2>/dev/null || true
 
+# Session mode + screen size are decided HERE, before the daemon starts:
+# minerva-sessiond snapshots MINERVA_SESSION_MODE from its own environment at
+# startup and refuses win_op/exec ("not in x11 session mode") unless it read
+# "x11". 0.5.5 exported it *after* start_daemon, so every real VM ran with the
+# daemon in "dev" mode and the shell degraded to its offline toy catalogue —
+# a desktop that looked like Minerva but launched nothing. Never again.
 MULTIWIN=no
 if [ -n "${DISPLAY:-}" ] && command -v openbox >/dev/null 2>&1; then MULTIWIN=yes; fi
+MINERVA_SESSION_MODE="$([ "$MULTIWIN" = yes ] && echo x11 || echo kiosk)"
+export MINERVA_SESSION_MODE
 
 SCREEN_W=1920
 SCREEN_H=1080
@@ -134,7 +142,7 @@ elif command -v xdpyinfo >/dev/null 2>&1; then
   dims="$(xdpyinfo 2>/dev/null | awk '/dimensions:/ {print $2; exit}')"
   case "$dims" in *x*) SCREEN_W="${dims%%x*}"; SCREEN_H="${dims##*x}" ;; esac
 fi
-log "screen ${SCREEN_W}x${SCREEN_H}"
+log "screen ${SCREEN_W}x${SCREEN_H} mode=$MINERVA_SESSION_MODE"
 
 # ---------------------------------------------------------------- openbox cfg
 write_openbox_config() {
@@ -278,6 +286,7 @@ enforce_shell_surface() {
       if [ "$t" = "Minerva" ]; then
         wmctrl -i -r 0x$id -b add,below,skip_taskbar,skip_pager 2>/dev/null
         wmctrl -i -r 0x$id -b add,fullscreen 2>/dev/null
+        wmctrl -i -r 0x$id -e 0,0,0,"$SCREEN_W","$SCREEN_H" 2>/dev/null
       fi
     done
     sleep 3
@@ -310,7 +319,7 @@ while [ "$i" -lt 50 ]; do
 done
 [ "$i" -lt 50 ] || log "warning: daemon not healthy after 10 s"
 
-CHROME_FLAGS="--no-first-run --no-default-browser-check --disable-session-crashed-bubble --disable-dev-shm-usage --password-store=basic --disable-translate --check-for-update-interval=31536000"
+CHROME_FLAGS="--no-first-run --no-default-browser-check --disable-session-crashed-bubble --disable-dev-shm-usage --password-store=basic --disable-translate --check-for-update-interval=31536000 --force-device-scale-factor=1"
 
 # The single fullscreen shell surface. --kiosk makes chromium fullscreen by
 # itself on any stack, so no window-manager cooperation is required for the
@@ -332,8 +341,7 @@ shell_window() {
 }
 
 if [ "$MULTIWIN" = yes ]; then
-  MINERVA_SESSION_MODE=x11
-  export MINERVA_SESSION_MODE MINERVA_BROWSER="$BROWSER" MINERVA_SESSION_PID=$$
+  export MINERVA_BROWSER="$BROWSER" MINERVA_SESSION_PID=$$
   log "session mode: x11 (openbox + fullscreen shell surface + real app windows)"
   # Clean up stale EWMH root properties left by the display manager or a
   # previous WM (proven step from openbox-session).
@@ -376,8 +384,7 @@ if [ "$MULTIWIN" = yes ]; then
   ENFORCE_PID=$!
   log "shell-surface enforcer pid=$ENFORCE_PID"
 else
-  MINERVA_SESSION_MODE=kiosk
-  export MINERVA_SESSION_MODE MINERVA_BROWSER="$BROWSER" MINERVA_SESSION_PID=$$
+  export MINERVA_BROWSER="$BROWSER" MINERVA_SESSION_PID=$$
   log "session mode: kiosk single-window ($BROWSER)"
   case "$(basename "$BROWSER")" in
     chromium|chromium-browser) shell_window ;;
