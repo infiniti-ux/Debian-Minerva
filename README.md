@@ -99,39 +99,48 @@ sudo apt install -y git build-essential devscripts debhelper cargo rustc \
 # 2. Clone and build the .deb
 git clone https://github.com/infiniti-ux/Debian-Minerva.git
 cd Debian-Minerva
-make deb                      # dpkg-buildpackage -us -uc -b
+sudo apt install -y debhelper cargo rustc \
+     libx11-dev libxext-dev libxrender-dev libxcomposite-dev \
+     libxdamage-dev libxfixes-dev      # same thing: make deb-deps
+make deb                      # dpkg-buildpackage -us -uc -b (pre-flight
+                              # checks the deps and prints the apt fix)
 
 # 3. Install it
-sudo apt install ../debian-minerva_0.2.0_*.deb
+sudo apt install ../debian-minerva_*.deb
 
 # 4. Log out, and at the display manager (GDM/LightDM/SDDM)
 #    click the session chooser and pick "Minerva", then log in.
 ```
 
-The session (`/usr/bin/minerva-session`) starts **Openbox** (window manager)
-and the Rust daemon on `127.0.0.1:47801` with a per-session token, autostarts
-standard services (notification daemon, clipboard, polkit agent), then opens
-ONE fullscreen Minerva shell surface that draws the whole desktop — wallpaper,
-top bar, full-width taskbar dock, launcher, popovers, notifications, settings.
-Real applications run as ordinary X windows on top and appear in the dock
-taskbar (EWMH client list): click focuses, right-click closes.
-Keybinds: `Super` launcher, `Ctrl+Alt+T`/`Super+T` terminal, `Super+E` files,
-`Super+W` browser, `Super+D` show desktop, `Alt+Tab` native window switching,
-`Super+←/→` workspace switching, `Print` screenshot, right-click root menu.
-Logs: `~/.local/state/minerva/session.log`.
-Without X11/Openbox the session falls back to a single-window kiosk
-(cage/weston on Wayland). Product roadmap & recovery guide: `docs/PRODUCT.md`.
+The session (`/usr/bin/minerva-session`) starts **minerva-wm** — the native
+Rust X11 window manager and compositor. Panel, taskbar dock, launcher and
+quick settings are native X windows the WM draws itself; the Rust daemon runs
+on `127.0.0.1:47801` with a per-session token, and standard services
+(notification daemon, clipboard, polkit agent) ride systemd user units.
+Real applications run as ordinary X windows: click focuses, taskbar click
+minimizes/restores, decoration buttons close/maximize/minimize.
+Keybinds: `Super` launcher, `Ctrl+Alt+T` terminal, `Super+D` show desktop,
+`Alt+Tab` / `Alt+Shift+Tab` window cycling, `Alt+F4` close, `Super+1..4`
+workspaces, `Super+←/→` workspace prev/next, `Super+Q` quick settings,
+`Super+X` power menu, `Super+L` lock, Alt+drag move / Alt+right-drag resize,
+right-click on the desktop for the root menu.
+Logs: `~/.local/state/minerva/session.log` (includes minerva-wm stderr).
+If minerva-wm is missing or dies twice, the session fails over LOUDLY
+(report + notification) to the legacy xfce4-session + browser-shell base.
+Product roadmap & recovery guide: `docs/PRODUCT.md`.
 
 ### Development commands
 
 ```bash
 make build                # cargo build --release
 make run                  # serve the shell at http://localhost:8080 (dev)
-make session              # run the full DE session right here (needs cage/X)
+make session              # run the full DE session right here (needs X)
 make test                 # cargo test (JSON parser + reducer tests)
 make self-test            # reducer smoke test, prints the snapshot
 make install              # install to /usr without the .deb
-make deb                  # build the installable .deb
+make deb                  # build the installable .deb (dep pre-flight)
+make deb-deps             # sudo apt install the .deb build dependencies
+make wm-smoke             # minerva-wm --smoke under Xvfb (needs xvfb)
 ```
 
 The daemon has **no external crates** — `Cargo.toml` has an empty
