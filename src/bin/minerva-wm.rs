@@ -4342,7 +4342,7 @@ impl Wm {
                     if show {
                         XMapWindow(self.dpy, w);
                     }
-                    break;
+                    return;
                 }
                 let mut attrs: XWindowAttributes = std::mem::zeroed();
                 clear_error();
