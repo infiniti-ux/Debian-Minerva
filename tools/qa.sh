@@ -9,6 +9,11 @@ for f in session/minerva-* debian/postinst; do
   case "$f" in *.desktop|*.service) continue ;; esac
   [ -f "$f" ] && { dash -n "$f" || fail=1; }
 done
+# every session script must keep its executable bit (verify calls them by name)
+for f in session/minerva-session session/minerva-shell-start session/minerva-doctor session/minerva-bootstrap session/minerva-verify session/minerva-trace session/minerva-dunstrc session/minerva-ctl session/minerva-autostart; do
+  [ -x "$f" ] || { echo "qa: $f lost its executable bit"; fail=1; }
+done
+
 # bug patterns that must never come back
 grep -n 'wait "\${SHELL_START_PID:-0}"' session/minerva-session && fail=1
 grep -n 'animation: pop2 ' web/css/minerva.css && fail=1
