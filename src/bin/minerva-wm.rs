@@ -23,7 +23,7 @@
 #![allow(non_camel_case_types, non_snake_case, non_upper_case_globals, dead_code)]
 
 use std::collections::HashMap;
-use std::ffi::{CStr, CString};
+use std::ffi::CString;
 use std::fs;
 use std::os::raw::{c_char, c_int, c_long, c_short, c_uchar, c_uint, c_ulong, c_ushort, c_void};
 use std::path::PathBuf;
@@ -1040,17 +1040,15 @@ fn spawn_app(cmd: &str) {
     use std::os::unix::process::CommandExt;
     use std::process::Stdio;
     let home = std::env::var("HOME").unwrap_or_else(|_| "/tmp".into());
-    let _ = unsafe {
-        Command::new("sh")
-            .arg("-c")
-            .arg(cmd)
-            .current_dir(home)
-            .stdin(Stdio::null())
-            .stdout(Stdio::null())
-            .stderr(Stdio::null())
-            .process_group(0)
-            .spawn()
-    };
+    let _ = Command::new("sh")
+        .arg("-c")
+        .arg(cmd)
+        .current_dir(home)
+        .stdin(Stdio::null())
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .process_group(0)
+        .spawn();
 }
 
 fn reap_children() {
@@ -2005,7 +2003,7 @@ impl Wm {
         // XReparentWindow of a mapped window generates one UnmapNotify for
         // the client — swallow exactly that one, never a later real unmap
         *self.expect_unmap.entry(win).or_insert(0) += 1;
-        XReparentWindow(self.dpy, win, frame, FRAME_BW as c_int, (decor + FRAME_BW as c_int));
+        XReparentWindow(self.dpy, win, frame, FRAME_BW as c_int, decor + FRAME_BW as c_int);
         XSetWindowBorderWidth(self.dpy, win, 0);
         XSelectInput(
             self.dpy,

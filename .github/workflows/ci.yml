@@ -33,37 +33,24 @@ jobs:
         if: failure()
         shell: bash
         run: |
-          cat /tmp/log-build.txt /tmp/log-test.txt /tmp/log-smoke.txt 2>/dev/null > /tmp/log-all.txt || true
-          python3 - <<'PY'
-          import re
-          txt = open('/tmp/log-all.txt').read()
-          blocks = re.split(r'\n(?=error)', txt)
-          n = 0
-          for b in blocks:
-              if not b.startswith('error') and 'smoke: FAIL' not in b and not b.startswith('thread'):
-                  continue
-              msg = b.strip()[:1200].replace('\n', '%0A').replace(':', '%3A').replace(',', '%2C')
-              print(f"::error title=cargo/smoke error {n}::{msg}")
-              n += 1
-              if n >= 30:
-                  break
-          if n == 0:
-              print("::error title=cargo::build failed, see ci/build-log.txt")
-          PY
+          set +e
+          cat /tmp/log-build.txt /tmp/log-test.txt /tmp/log-smoke.txt 2>/dev/null > /tmp/log-all.txt
           mkdir -p ci
           {
-            echo "# last failing CI log — $(date -u +%FT%TZ) run ${{ github.run_id }}"
-            grep -E '^error' -A 8 /tmp/log-all.txt | head -400
-            echo '--- tails ---'
-            tail -n 200 /tmp/log-all.txt
+            echo "# failing CI log $(date -u +%FT%TZ) run ${GITHUB_RUN_ID}"
+            echo "--- smoke log ---"
+            cat /tmp/log-smoke.txt 2>/dev/null
+            echo "--- build errors/warnings ---"
+            grep -E '^(error|warning)' -A 6 /tmp/log-build.txt 2>/dev/null | head -120
+            echo "--- test tail ---"
+            tail -n 40 /tmp/log-test.txt 2>/dev/null
           } > ci/build-log.txt
-          git config user.name "minerva-ci"
-          git config user.email "ci@minerva.local"
-          git checkout -B ci-log "${{ github.sha }}" 2>/dev/null || true
-          git checkout "${{ github.ref_name }}" 2>/dev/null || true
+          grep -E '^(error|minerva-wm|xvfb-run|thread|FAIL)' /tmp/log-all.txt | head -60 | sed -e 's/^/::error title=ci::/' -e 's/%/%25/g'
+          git config user.name minerva-ci
+          git config user.email ci@minerva.local
+          git fetch origin "$GITHUB_REF_NAME" 2>/dev/null
+          git checkout -B logpush "origin/$GITHUB_REF_NAME" 2>/dev/null || git checkout -B logpush
           git add ci/build-log.txt
-          if ! git diff --cached --quiet; then
-            git commit -m "ci: publish failing build log [skip ci]"
-            git push origin "HEAD:${{ github.ref_name }}" || echo "log push refused (token read-only) — annotations above are the fallback"
-          fi
+          git commit -m "ci: publish failing logs [skip ci]" 2>/dev/null
+          git push origin "HEAD:$GITHUB_REF_NAME" 2>/dev/null || echo "log push refused (token read-only)"
           exit 0
