@@ -6,16 +6,21 @@ systems language. The UI is a near-1:1 recreation of the leaked
 app drawer, desktop folders, compact quick settings, virtual desktops, freeform
 windows — with **all Google branding removed** and replaced by Debian Minerva.
 
-> **Status:** installable desktop environment (0.6.x, wrapper base). The
-> `.deb` adds a **Minerva** session to GDM/LightDM/SDDM. Logging in starts a
-> real X11 desktop on proven Debian machinery — xfce4-session + xfwm4
-> (openbox fallback) — with the Aluminium-accurate Minerva shell as the one
-> fullscreen surface (status bar, taskbar dock, launcher, quick settings,
-> notifications, settings, lock screen) and real applications as real
-> windows on top. Verify any install with one command: `minerva-verify`
-> (component matrix + live session report, saved to ~/minerva-report.txt).
-> Services run as systemd user units; sandboxed apps see a real desktop
-> through xdg-desktop-portal with Minerva's backend preference.
+> **Status:** installable desktop environment (0.11.x, NATIVE base). The
+> `.deb` adds a **Minerva** session to GDM/LightDM/SDDM. Logging in starts
+> `minerva-wm` — a real X11 window manager and compositor written in Rust
+> that talks to the X server directly (libX11/libXrender/libXcomposite/
+> libXdamage FFI, zero crates): ICCCM/EWMH window management, its own
+> Aluminium-style decorations, and a COMPOSITE+DAMAGE+RENDER compositing
+> pass on the overlay window (shadows, ARGB clients). The panel, taskbar,
+> app launcher and quick-settings menus are native X windows the WM draws
+> itself — no browser, no HTML underneath. The old xfce4-session + browser
+> shell stack remains only as a loud two-strike fail-safe. Verify any
+> install with one command: `minerva-verify` (component matrix + live
+> session report, saved to ~/minerva-report.txt); the WM itself has an
+> end-to-end protocol self-test: `minerva-wm --smoke` on a bare display
+> (runs in CI under Xvfb on every push). Services run as systemd user
+> units; sandboxed apps see a real desktop through xdg-desktop-portal.
 
 ---
 

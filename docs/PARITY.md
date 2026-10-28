@@ -25,8 +25,10 @@ own Wayland compositor is the v1.0 milestone; "asal bukan Wayland lemot").
 |---|---------------|-------------------|
 | 1 | `.desktop` session entry in `/usr/share/xsessions` | `session/minerva.desktop` |
 | 2 | Session bootstrap script (dbus guard, env, resources) | `/usr/bin/minerva-session` |
-| 3 | Session manager (autostart, save-session, polkit) | `xfce4-session` (wrapper base, 0.6.0) |
-| 4 | Window manager (EWMH, real windows) | `xfwm4` (fallback: `openbox`) |
+| 3 | Session manager (autostart, save-session, polkit) | `minerva-session` + `minerva-wm` native base (v0.11.0); `xfce4-session` only as fail-safe |
+| 4 | Window manager (EWMH, real windows) | **`minerva-wm` — native Rust X11 WM** (fallback: `xfwm4`, `openbox`) |
+| 4b | Compositor | **`minerva-wm` — COMPOSITE+DAMAGE+RENDER overlay, shadows, ARGB** (fallback: direct painting) |
+| 4c | Panel / taskbar / launcher / quick settings | **native X windows drawn by `minerva-wm`** (browser shell = fail-safe only) |
 | 5 | Panel / bar | Minerva shell top bar + taskbar dock (Aluminium surface) |
 | 6 | Application launcher / menu | shell launcher sheet, `Super` via xfconf/openbox binds |
 | 7 | Notification centre | shell notification shade + `dunst` for app `notify-send` |

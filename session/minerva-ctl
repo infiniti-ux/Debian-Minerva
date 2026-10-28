@@ -26,6 +26,36 @@ post() {
     -d "$1" >/dev/null
 }
 
+# ---- native WM channel (v0.11.0) -------------------------------------------
+# minerva-wm watches the root property _MINERVA_WM_CMD; xprop is enough to
+# drive the native shell. The daemon POST stays as the fallback for the
+# legacy bases and for commands only the daemon implements (apps, windows).
+wm_cmd() {
+  command -v xprop >/dev/null 2>&1 || return 1
+  xprop -root _MINERVA_SUPPORTING 2>/dev/null | grep -q 'minerva-wm' || return 1
+  xprop -root -f _MINERVA_WM_CMD 8s -set _MINERVA_WM_CMD "$1" >/dev/null 2>&1
+}
+
+native_for() {
+  case "$1/$2" in
+    panel/launcher|event/launcher|event/overview) echo launcher ;;
+    panel/settings|panel/topbar|panel/shade|panel/wifi|panel/audio|panel/battery|panel/calendar|panel/dock) echo qs ;;
+    panel/power) echo power ;;
+    cmd/lock) echo lock ;;
+    cmd/logout) echo logout ;;
+    cmd/reboot) echo reboot ;;
+    cmd/shutdown) echo shutdown ;;
+    cmd/showdesktop) echo showdesktop ;;
+    *) echo "" ;;
+  esac
+}
+
+route() {
+  # $1 = native command (may be empty), $2 = daemon JSON fallback
+  if [ -n "$1" ] && wm_cmd "$1"; then return 0; fi
+  post "$2"
+}
+
 usage() {
   cat >&2 <<EOF
 usage:
@@ -42,10 +72,10 @@ EOF
 [ $# -ge 2 ] || usage
 
 case "$1" in
-  panel) post "{\"panel\":\"$2\"}" ;;
+  panel) route "$(native_for panel "$2")" "{\"panel\":\"$2\"}" ;;
   app) post "{\"desktop\":\"$2\",\"app\":\"$2\"}" ;;
-  cmd)   post "{\"cmd\":\"$2\"}" ;;
-  event) post "{\"event\":\"$2\"}" ;;
-  win)   post "{\"win_op\":\"$2\",\"win_id\":\"$3\"}" ;;
+  cmd)   route "$(native_for cmd "$2")" "{\"cmd\":\"$2\"}" ;;
+  event) route "$(native_for event "$2")" "{\"event\":\"$2\"}" ;;
+  win)   post "{\"win_op\":\"$2\",\"win_id\":\"${3:-}\"}" ;;
   *)     usage ;;
 esac

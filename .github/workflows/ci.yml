@@ -1,0 +1,56 @@
+name: ci
+on:
+  push:
+    branches: ['**']
+  pull_request:
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Install build deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libx11-dev libxext-dev libxrender-dev libxcomposite-dev libxdamage-dev libxrandr-dev libxfixes-dev libxcursor-dev xvfb
+      - name: Cargo build (release)
+        shell: bash
+        run: |
+          set -o pipefail
+          cargo build --release 2>&1 | tee /tmp/log-build.txt
+      - name: Cargo test
+        shell: bash
+        run: |
+          set -o pipefail
+          cargo test --all 2>&1 | tee /tmp/log-test.txt
+      - name: minerva-wm smoke test on Xvfb (real X11 protocol round trips)
+        shell: bash
+        run: |
+          set -o pipefail
+          xvfb-run -a -s "-screen 0 1280x1024x24" ./target/release/minerva-wm --smoke 2>&1 | tee /tmp/log-smoke.txt
+      - name: Publish failure logs (annotations + ci/build-log.txt)
+        if: failure()
+        shell: bash
+        run: |
+          set +e
+          cat /tmp/log-build.txt /tmp/log-test.txt /tmp/log-smoke.txt 2>/dev/null > /tmp/log-all.txt
+          mkdir -p ci
+          {
+            echo "# failing CI log $(date -u +%FT%TZ) run ${GITHUB_RUN_ID}"
+            echo "--- smoke log ---"
+            cat /tmp/log-smoke.txt 2>/dev/null
+            echo "--- build errors/warnings ---"
+            grep -E '^(error|warning)' -A 6 /tmp/log-build.txt 2>/dev/null | head -120
+            echo "--- test tail ---"
+            tail -n 40 /tmp/log-test.txt 2>/dev/null
+          } > ci/build-log.txt
+          grep -E '^(error|minerva-wm|xvfb-run|thread|FAIL)' /tmp/log-all.txt | head -60 | sed -e 's/^/::error title=ci::/' -e 's/%/%25/g'
+          git config user.name minerva-ci
+          git config user.email ci@minerva.local
+          git fetch origin "$GITHUB_REF_NAME" 2>/dev/null
+          git checkout -B logpush "origin/$GITHUB_REF_NAME" 2>/dev/null || git checkout -B logpush
+          git add ci/build-log.txt
+          git commit -m "ci: publish failing logs [skip ci]" 2>/dev/null
+          git push origin "HEAD:$GITHUB_REF_NAME" 2>/dev/null || echo "log push refused (token read-only)"
+          exit 0

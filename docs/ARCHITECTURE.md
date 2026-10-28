@@ -1,11 +1,27 @@
 # Architecture
 
-Debian Minerva is split into two processes, mirroring how ChromeOS-like
-desktops isolate the system layer from the renderer.
+Since v0.11.0 the desktop is NATIVE: `minerva-wm` is a real X11 window
+manager and compositor written in Rust (std + libX11/libXext/libXrender/
+libXcomposite/libXdamage FFI, zero crates). It owns the screen
+(SubstructureRedirect + WM_S0), implements ICCCM/EWMH, draws its own
+decorations, panel, taskbar, launcher and system menus with core X drawing,
+and composites through COMPOSITE manual-redirect + DAMAGE + RENDER onto the
+composite overlay window (drop shadows, ARGB clients) — falling back loudly
+to direct server painting when the extensions are absent.
+
+The 0.6–0.10 wrapper stack (browser-rendered HTML shell riding
+xfce4-session + xfwm4) survives only as a two-strike fail-safe: if
+minerva-wm is missing or dies twice, minerva-session writes
+~/minerva-report.txt, sends a critical notification and demotes to the
+legacy base. Everything below documents that legacy data path, which the
+daemon still serves (minerva-ctl, doctor, tools).
 
 ```
 ┌───────────────────────────────────────────────────────────────┐
-│ Browser / shell renderer (HTML + CSS + vanilla JS)             │
+│ minerva-wm — NATIVE (v0.11.0 primary)                          │
+│  WM core (EWMH/ICCCM) · compositor · panel/dock/launcher/QS    │
+├───────────────────────────────────────────────────────────────┤
+│ Legacy fallback shell renderer (HTML + CSS + vanilla JS)       │
 │  ┌──────────┬──────────┬───────────┬──────────────────────┐  │
 │  │ Status   │ Dock /   │ Window    │ App views            │  │
 │  │ bar      │ launcher │ manager   │ (18 built-ins)       │  │

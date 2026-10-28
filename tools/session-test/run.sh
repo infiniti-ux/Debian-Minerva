@@ -5,7 +5,7 @@
 set -u
 cd "$(dirname "$0")" || exit 1
 fail=0
-for t in xfconf-test.sh autostart-test.sh dunstrc-test.sh bootstrap-test.sh doctor-test.sh verify-test.sh trace-test.sh session-env-test.sh; do
+for t in xfconf-test.sh autostart-test.sh dunstrc-test.sh bootstrap-test.sh doctor-test.sh verify-test.sh trace-test.sh native-test.sh session-env-test.sh; do
   echo "--- $t"
   sh "$t" || fail=1
 done
