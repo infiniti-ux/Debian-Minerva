@@ -8,13 +8,48 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - name: Install build deps
         run: |
           sudo apt-get update
-          sudo apt-get install -y libx11-dev libxext-dev libxrender-dev libxcomposite-dev libxdamage-dev libxrandr-dev libxfixes-dev libxcursor-dev xvfb xterm
+          sudo apt-get install -y libx11-dev libxext-dev libxrender-dev libxcomposite-dev libxdamage-dev libxrandr-dev libxfixes-dev libxcursor-dev xvfb
       - name: Cargo build (release)
-        run: cargo build --release --verbose
+        shell: bash
+        run: |
+          set -o pipefail
+          cargo build --release 2>&1 | tee /tmp/log-build.txt
       - name: Cargo test
-        run: cargo test --all
+        shell: bash
+        run: |
+          set -o pipefail
+          cargo test --all 2>&1 | tee /tmp/log-test.txt
       - name: minerva-wm smoke test on Xvfb (real X11 protocol round trips)
-        run: xvfb-run -a -s "-screen 0 1280x1024x24" ./target/release/minerva-wm --smoke
+        shell: bash
+        run: |
+          set -o pipefail
+          xvfb-run -a -s "-screen 0 1280x1024x24" ./target/release/minerva-wm --smoke 2>&1 | tee /tmp/log-smoke.txt
+      - name: Publish failure logs (annotations + ci/build-log.txt)
+        if: failure()
+        shell: bash
+        run: |
+          cat /tmp/log-build.txt /tmp/log-test.txt /tmp/log-smoke.txt 2>/dev/null > /tmp/log-all.txt || true
+          grep -E '^(error|warning: unused|thread|FAIL)' /tmp/log-all.txt | head -80 | while IFS= read -r line; do
+            echo "::error title=build::${line}"
+          done
+          mkdir -p ci
+          {
+            echo "# last failing CI log — $(date -u +%FT%TZ) run ${{ github.run_id }}"
+            grep -E '^error' -A 8 /tmp/log-all.txt | head -400
+            echo '--- tails ---'
+            tail -n 200 /tmp/log-all.txt
+          } > ci/build-log.txt
+          git config user.name "minerva-ci"
+          git config user.email "ci@minerva.local"
+          git checkout -B ci-log "${{ github.sha }}" 2>/dev/null || true
+          git checkout "${{ github.ref_name }}" 2>/dev/null || true
+          git add ci/build-log.txt
+          if ! git diff --cached --quiet; then
+            git commit -m "ci: publish failing build log [skip ci]"
+            git push origin "HEAD:${{ github.ref_name }}" || echo "log push refused (token read-only) — annotations above are the fallback"
+          fi
