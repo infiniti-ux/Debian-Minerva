@@ -410,12 +410,22 @@ impl Exec {
                 }
             }
             "lock" => {
-                // the shell draws its own locker surface; the session
-                // enforcer restacks it ABOVE every window while this flag
-                // exists (loginctl lock-session had no listener, and the old
-                // dpms fallback only blanked the monitor — not a lock)
-                let _ = std::fs::create_dir_all(&self.runtime_dir);
-                let _ = std::fs::write(format!("{}/locked", self.runtime_dir), b"1");
+                // Real PAM lock when the base locker runs (xfce4-screensaver,
+                // configured invisible: no auto-blank, manual --lock requires
+                // auth); otherwise the shell locker surface fallback — the
+                // enforcer restacks it above every window while the flag
+                // exists.
+                let have = Command::new("sh")
+                    .args(["-c", "pgrep -x xfce4-screensaver >/dev/null 2>&1"])
+                    .status()
+                    .map(|s| s.success())
+                    .unwrap_or(false);
+                if have {
+                    spawn_detached("xfce4-screensaver-command --lock");
+                } else {
+                    let _ = std::fs::create_dir_all(&self.runtime_dir);
+                    let _ = std::fs::write(format!("{}/locked", self.runtime_dir), b"1");
+                }
                 ok_json(vec![])
             }
             "unlock" => {

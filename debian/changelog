@@ -1,3 +1,19 @@
+debian-minerva (0.7.1) unstable; urgency=medium
+
+  * Comot pass — take the good parts from the big DEs onto the light base:
+      - REAL password lock: xfce4-screensaver now runs (unmasked) with an
+        invisible config (auto-blank off, lock on demand with PAM auth).
+        Super+L / power-menu lock routes through the daemon: real
+        screensaver lock when available, shell locker surface otherwise;
+      - REAL power management: xfce4-power-manager runs (unmasked) with
+        tray icon off, no idle blanking, lock on suspend/hibernate, logind
+        lid handling — brightness/suspend machinery without visual noise;
+      - both configured via force-rewritten xfconf channels every login;
+      - bootstrap matrix gains auth-lock + power-manager components;
+        Recommends updated accordingly.
+
+ -- Minerva Team <minerva@localhost>  Wed, 28 Oct 2026 14:00:00 +0700
+
 debian-minerva (0.7.0) unstable; urgency=medium
 
   * Polish release — the desktop must look and feel like one product:

@@ -10,7 +10,7 @@ Homepage: https://github.com/infiniti-ux/Debian-Minerva
 Package: debian-minerva
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}, xfce4-session, xfwm4, xfconf, chromium, curl, x11-utils, wmctrl, xterm
-Recommends: openbox, network-manager, x11-xserver-utils, dbus-x11, dex, dunst, parcellite, scrot, open-vm-tools-desktop,
+Recommends: openbox, xfce4-screensaver, xfce4-power-manager, network-manager, x11-xserver-utils, dbus-x11, dex, dunst, parcellite, scrot, open-vm-tools-desktop,
  pcmanfm, mousepad, viewnior, xarchiver, galculator, atril, xfce4-terminal
 Suggests: cage, weston
 Description: Debian Minerva desktop environment (Rust core, real X11 session)

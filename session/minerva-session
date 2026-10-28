@@ -233,7 +233,38 @@ XEOF
   </property>
 </channel>
 XEOF
-  log "xfconf defaults at $XD (xfwm4/xsettings forced every login; session/keys if absent)"
+  cat >"$XD/xfce4-screensaver.xml" <<'XEOF'
+<?xml version="1.0" encoding="UTF-8"?>
+<channel name="xfce4-screensaver" version="1.0">
+  <property name="saver" type="empty">
+    <property name="enabled" type="bool" value="false"/>
+    <property name="mode" type="int" value="0"/>
+  </property>
+  <property name="lock" type="empty">
+    <property name="enabled" type="bool" value="true"/>
+  </property>
+</channel>
+XEOF
+  cat >"$XD/xfce4-power-manager.xml" <<'XEOF'
+<?xml version="1.0" encoding="UTF-8"?>
+<channel name="xfce4-power-manager" version="1.0">
+  <property name="xfce4-power-manager" type="empty">
+    <property name="show-tray-icon" type="bool" value="false"/>
+    <property name="blank-on-ac" type="int" value="0"/>
+    <property name="blank-on-battery" type="int" value="0"/>
+    <property name="dpms-on-ac-off" type="int" value="0"/>
+    <property name="dpms-on-ac-sleep" type="int" value="0"/>
+    <property name="dpms-on-battery-off" type="int" value="0"/>
+    <property name="dpms-on-battery-sleep" type="int" value="0"/>
+    <property name="lock-screen-suspend-hibernate" type="bool" value="true"/>
+    <property name="logind-handle-lid-switch" type="bool" value="true"/>
+    <property name="general-notification" type="bool" value="false"/>
+    <property name="brightness-switch" type="int" value="0"/>
+    <property name="brightness-switch-restore-on-exit" type="int" value="0"/>
+  </property>
+</channel>
+XEOF
+  log "xfconf defaults at $XD (look+lock+power forced every login; session/keys if absent)"
 }
 
 # ------------------------------------------- mask XFCE parts we replace
@@ -243,7 +274,7 @@ XEOF
 mask_autostart() {
   AD="${XDG_CONFIG_HOME:-$HOME/.config}/autostart"
   mkdir -p "$AD" 2>/dev/null || return 0
-  for d in xfce4-panel xfdesktop xfce4-screensaver xfce4-power-manager; do
+  for d in xfce4-panel xfdesktop; do
     cat >"$AD/$d.desktop" <<EOF
 [Desktop Entry]
 Hidden=true
