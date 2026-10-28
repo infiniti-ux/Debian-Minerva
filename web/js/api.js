@@ -162,8 +162,8 @@
       case 'sysinfo': case 'free':
         out = 'OS       ' + sys.os + '\nKernel   ' + sys.kernel + '\nMemory   ' + sys.mem_used_mb + ' / ' + sys.mem_total_mb + ' MB\nCPUs     ' + sys.cpus + '\nSession  ' + sys.session; break;
       case 'ps': out = 'PID    APP            STATE\n' + ((ctx && ctx.windows || []).map(function (w) { return String(w.id).padEnd(6) + ' ' + w.app.padEnd(14) + ' ' + w.state; }).join('\n') || 'no processes'); break;
-      case 'neofetch': case 'minerva': out = '\x00ascii\nUSER     user@minerva\nOS       Debian Minerva\nKERNEL   ' + sys.kernel + '\nSHELL    minerva-sh (Rust)\nDE       Debian Minerva 0.6.0\nTHEME    ' + (ctx && ctx.theme || 'dark') + '\nWINDOWS  ' + (ctx && ctx.windows || []).length; break;
-      case 'about': out = 'Debian Minerva 0.6.0 — a Rust desktop session for Debian GNU/Linux.\nNo Google components. Just Debian + Rust.'; break;
+      case 'neofetch': case 'minerva': out = '\x00ascii\nUSER     user@minerva\nOS       Debian Minerva\nKERNEL   ' + sys.kernel + '\nSHELL    minerva-sh (Rust)\nDE       Debian Minerva 0.6.1\nTHEME    ' + (ctx && ctx.theme || 'dark') + '\nWINDOWS  ' + (ctx && ctx.windows || []).length; break;
+      case 'about': out = 'Debian Minerva 0.6.1 — a Rust desktop session for Debian GNU/Linux.\nNo Google components. Just Debian + Rust.'; break;
       case 'poweroff': case 'logout': out = '\x00poweroff'; break;
       case 'reboot': out = '\x00reboot'; break;
       case 'reset': events.push({ type: 'reset' }); out = 'session reset'; break;
@@ -204,7 +204,7 @@
       uptime_secs: Math.floor(performance.now() / 1000) + 3600,
       loadavg: '0.42 0.38 0.31', session: 'minerva-shell (browser preview)',
       toolkit: 'Minerva Shell / Rust-compatible core', de: 'Debian Minerva',
-      de_version: '0.6.0', rustc: 'rustc (native daemon not attached)',
+      de_version: '0.6.1', rustc: 'rustc (native daemon not attached)',
       battery_level: 0.94, battery_charging: false, battery_present: false
     };
   }
