@@ -1,3 +1,33 @@
+debian-minerva (0.10.0) unstable; urgency=medium
+
+  * Coverage batch — close the domains where GNOME still led, with real
+    system wiring (no fakes):
+      - SCREEN RECORDING: QS "Record" tile now drives ffmpeg x11grab
+        (daemon sys ops record_start/record_stop, PID file in the
+        runtime dir, SIGINT finalises the mp4 into ~/Videos);
+      - FRACTIONAL SCALING: Display settings gains 100/125/150/200%
+        chips -> daemon fractional_set = xrandr --scale with panned
+        framebuffer (the same method GNOME uses on X11);
+      - ACCESSIBILITY: new Settings > Accessibility page — Orca screen
+        reader toggle (orca_toggle sys op), focus-ring/reduced-motion/
+        AT-SPI status; at-spi2-core + orca in Suggests;
+      - PRINTERS: system-config-printer in Suggests + bootstrap row.
+  * Debian 13 (trixie) correctness pass — verified against
+    packages.debian.org/trixie:
+      - parcellite is GONE from trixie: clipboard is now xfce4-clipman
+        (unit minerva-clipman.service, preset, fallback spawn,
+        bootstrap row, doctor);
+      - policykit-1-gnome is GONE from trixie: auth-agent candidate
+        chain now starts at mate-polkit (in trixie AND bookworm), then
+        the old gnome paths, then lxqt; mate-polkit in Recommends;
+      - bootstrap check-targets accept comma-separated alternatives so
+        one matrix row spans distro renames;
+      - Suggests: ffmpeg, orca, system-config-printer, at-spi2-core
+        (all present in trixie).
+  * Docs (PARITY/PRODUCT/ARCHITECTURE) updated for the trixie swaps.
+
+ -- Minerva Team <minerva@localhost>  Wed, 28 Oct 2026 19:00:00 +0700
+
 debian-minerva (0.9.3) unstable; urgency=medium
 
   * Debug-suite completion pass (suite from 0.9.2 grown past the 1,000

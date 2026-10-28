@@ -31,7 +31,7 @@ own Wayland compositor is the v1.0 milestone; "asal bukan Wayland lemot").
 | 6 | Application launcher / menu | shell launcher sheet, `Super` via xfconf/openbox binds |
 | 7 | Notification centre | shell notification shade + `dunst` for app `notify-send` |
 | 8 | Autostart machinery | XDG autostart through xfce4-session; XFCE's own panel/desktop masked with `Hidden=true` overrides |
-| 9 | Clipboard manager | `parcellite`, started by `minerva-shell-start` |
+| 9 | Clipboard manager | `xfce4-clipman` (parcellite left Debian in trixie), unit + fallback spawn |
 | 10 | Polkit authentication agent | polkit-gnome agent, started by `minerva-shell-start` |
 | 11 | Theming / wallpaper | shell wallpapers + Aluminium panels; xfwm4/openbox window chrome themes; `dunstrc` in Aluminium colours |
 | 12 | Default applications & launching | Rust daemon `app_def` table + real `.desktop` exec parsing |
@@ -52,7 +52,7 @@ freedesktop contracts. Minerva now ships them:
 |---|---|
 | Desktop identity | `XDG_CURRENT_DESKTOP=Minerva` + `XDG_SESSION_DESKTOP=Minerva` exported session-wide (portals, OnlyShowIn, theme queries) |
 | Portals | `xdg-desktop-portal` + GTK backend with Minerva preference file `/usr/share/xdg-desktop-portal/minerva-portals.conf` (file pickers, screenshots, screen share, settings) |
-| Service lifecycle | systemd **user** units `minerva-dunst/parcellite/polkit.service` (`WantedBy=graphical-session.target`, restart on failure) + vendor preset `90-minerva.preset`; shell-start spawns only as fallback |
+| Service lifecycle | systemd **user** units `minerva-dunst/clipman/polkit.service` (`WantedBy=graphical-session.target`, restart on failure) + vendor preset `90-minerva.preset`; shell-start spawns only as fallback |
 | Toolkit display server | `GDK_BACKEND=x11`, `CLUTTER_BACKEND=x11`, `QT_QPA_PLATFORM=xcb`, `MOZ_ENABLE_WAYLAND=0`, `SAL_USE_VCLPLUGIN=gtk3` — the X11 mandate enforced per process |
 | MIME defaults | `/etc/xdg/mimeapps.list` written by postinst (browser/editor/files); user-level file still wins per spec |
 | Cursor theme | `XCURSOR_THEME`/`XCURSOR_SIZE` exported to match the xsettings channel |

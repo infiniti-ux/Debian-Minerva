@@ -32,7 +32,7 @@ override_dh_auto_install:
 	install -Dm644 session/minerva.desktop debian/debian-minerva/usr/share/xsessions/minerva.desktop
 	install -Dm644 packaging/minerva-sessiond.service debian/debian-minerva/usr/lib/systemd/user/minerva-sessiond.service
 	install -Dm644 packaging/minerva-dunst.service debian/debian-minerva/usr/lib/systemd/user/minerva-dunst.service
-	install -Dm644 packaging/minerva-parcellite.service debian/debian-minerva/usr/lib/systemd/user/minerva-parcellite.service
+	install -Dm644 packaging/minerva-clipman.service debian/debian-minerva/usr/lib/systemd/user/minerva-clipman.service
 	install -Dm644 packaging/minerva-polkit.service debian/debian-minerva/usr/lib/systemd/user/minerva-polkit.service
 	install -Dm644 packaging/90-minerva.preset debian/debian-minerva/usr/lib/systemd/user-preset/90-minerva.preset
 	install -Dm644 packaging/minerva-portals.conf debian/debian-minerva/usr/share/xdg-desktop-portal/minerva-portals.conf

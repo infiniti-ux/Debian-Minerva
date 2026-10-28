@@ -24,7 +24,7 @@ if [ "$lines" -ge 24 ]; then st_ok "matrix prints $lines component rows (>=24)";
 bad_fmt="$(printf '%s\n' "$out" | grep -E '^  (OK|MISSING)  ' | grep -c -v -E '^  (OK|MISSING)  [a-z0-9-]+ +[a-z0-9./-]+$')"
 if [ "$bad_fmt" = 0 ]; then st_ok "every row matches name+package format"; else st_bad "$bad_fmt malformed rows"; fi
 
-for row in portal-daemon portal-gtk-backend user-units user-preset mime-defaults auth-lock power-manager; do
+for row in portal-daemon portal-gtk-backend user-units user-preset mime-defaults auth-lock power-manager recorder printers a11y-orca; do
   if printf '%s\n' "$out" | grep -q "  $row "; then st_ok "row present: $row"; else st_bad "row missing: $row"; fi
 done
 

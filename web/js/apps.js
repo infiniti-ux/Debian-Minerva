@@ -95,7 +95,7 @@
       html: '<div class="app"><div class="app-toolbar"><span style="font-size:12px;color:var(--text-muted)">minerva-sh — ' +
         (ctx.api.backend === 'rust' ? 'connected to Rust daemon' : 'browser preview') + '</span><span class="spacer"></span>' +
         '<button class="tb-btn" data-a="clear">' + I.svg('trash', 15) + ' Clear</button></div>' +
-        '<div class="terminal" id="' + id + '-out"><div class="term-line">Debian Minerva 0.9.3 · minerva-sh</div>' +
+        '<div class="terminal" id="' + id + '-out"><div class="term-line">Debian Minerva 0.10.0 · minerva-sh</div>' +
         '<div class="term-line muted">Type <b>help</b> for a list of commands.</div><br></div>' +
         '<div class="app-status">Tip: try <b>neofetch</b>, <b>open settings</b>, <b>theme light</b>, <b>wallpaper aurora</b></div></div>',
       init: function (body) {
@@ -141,7 +141,7 @@
             '      <span class="term-ascii"> / /\\ \\</span>       OS      : Debian Minerva',
             '     <span class="term-ascii">/ /  \\ \\</span>      Kernel  : 6.12.0-minerva',
             '    <span class="term-ascii">/_( )_  \\</span>     Shell   : minerva-sh (Rust)',
-            '   <span class="term-ascii">\\      /</span>       DE      : Minerva 0.9.3',
+            '   <span class="term-ascii">\\      /</span>       DE      : Minerva 0.10.0',
             '    <span class="term-ascii">\\____/</span>        Theme   : ' + esc(ctx.state.theme)
           ].join('\n');
         }
@@ -212,7 +212,7 @@
           } else if (current === 'system') {
             h = header('System', 'Session information and power controls.') +
               '<div class="settings-card"><h3>This session</h3><dl class="kv" id="' + id + '-kv">' +
-              '<dt>Desktop</dt><dd>Debian Minerva 0.9.3</dd><dt>Session</dt><dd>minerva (Rust)</dd>' +
+              '<dt>Desktop</dt><dd>Debian Minerva 0.10.0</dd><dt>Session</dt><dd>minerva (Rust)</dd>' +
               '<dt>Virtual desktops</dt><dd>' + s.workspaces.length + '</dd><dt>Open windows</dt><dd>' + s.windows.length + '</dd>' +
               '<dt>Backend</dt><dd>' + (ctx.api.backend === 'rust' ? 'minerva-sessiond (Rust)' : 'browser preview') + '</dd></dl></div>' +
               '<div class="settings-card"><h3>Danger zone</h3><div class="setting-row"><div class="sr-label"><strong>Reset session</strong><small>Close all windows and restore defaults</small></div><button class="danger-btn" data-reset>Reset</button></div></div>';
@@ -240,7 +240,7 @@
               }).join('') + '</ul></div>';
           } else if (current === 'about') {
             h = '<div class="about-hero"><img src="assets/logo.svg" alt=""><div><h1>Debian Minerva</h1>' +
-              '<p>A Rust-built desktop environment for Debian GNU/Linux.</p><p>Version 0.9.3 · MIT licensed</p></div></div>' +
+              '<p>A Rust-built desktop environment for Debian GNU/Linux.</p><p>Version 0.10.0 · MIT licensed</p></div></div>' +
               '<div class="settings-card"><h3>About this desktop</h3><p style="font-size:12.5px;line-height:1.7">' +
               'Debian Minerva is a desktop session with a Rust core: the window model, virtual desktops, ' +
               'notifications, settings and system services all live in <code>minerva-sessiond</code>. ' +
@@ -571,7 +571,7 @@
              ['Terminal', 'Try `neofetch`, `apps`, `open settings`, `theme light`.'],
              ['Customise', 'Change wallpaper, accent and theme in Settings → Appearance.'],
              ['Files', 'Your home directory is served by the Rust session daemon.'],
-             ['About', 'Debian Minerva 0.9.3 — MIT licensed, no Google components.']].map(function (c) {
+             ['About', 'Debian Minerva 0.10.0 — MIT licensed, no Google components.']].map(function (c) {
               return '<div class="browser-card"><h3>' + c[0] + '</h3><p>' + c[1] + '</p></div>';
             }).join('') + '</div>';
           url.value = 'minerva://start';
@@ -623,7 +623,7 @@
     return {
       html: '<div class="app"><div class="app-toolbar"><strong style="font-size:12px">Help & About</strong></div>' +
         '<div class="app-content"><div class="about-hero"><img src="assets/logo.svg" alt=""><div><h1>Debian Minerva</h1>' +
-        '<p>Version 0.9.3 · Rust desktop session</p></div></div>' +
+        '<p>Version 0.10.0 · Rust desktop session</p></div></div>' +
         '<div class="settings-card"><h3>What is this?</h3><p style="font-size:12.5px;line-height:1.7">' +
         'Debian Minerva is a prototype desktop environment for Debian GNU/Linux. ' +
         'Its system layer is written in Rust with no external crates; the UI shell is a lightweight web renderer.</p></div>' +

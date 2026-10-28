@@ -103,16 +103,16 @@ start_services() {
     dunst >/dev/null 2>&1 &
     log "dunst started (fallback spawn)"
   fi
-  if systemctl --user is-active --quiet minerva-parcellite.service 2>/dev/null; then
-    log "parcellite managed by systemd user unit"
-  elif command -v parcellite >/dev/null 2>&1 && ! pgrep -x parcellite >/dev/null 2>&1; then
-    parcellite >/dev/null 2>&1 &
-    log "parcellite started (fallback spawn)"
+  if systemctl --user is-active --quiet minerva-clipman.service 2>/dev/null; then
+    log "clipboard managed by systemd user unit (xfce4-clipman)"
+  elif command -v xfce4-clipman >/dev/null 2>&1 && ! pgrep -x xfce4-clipman >/dev/null 2>&1; then
+    xfce4-clipman >/dev/null 2>&1 &
+    log "xfce4-clipman started (fallback spawn)"
   fi
   if systemctl --user is-active --quiet minerva-polkit.service 2>/dev/null; then
     log "polkit agent managed by systemd user unit"
   else
-    for agent in /usr/lib/policykit-1-gnome/polkit-gnome-authentication-agent-1                  /usr/lib/polkit-gnome/polkit-gnome-authentication-agent-1                  /usr/libexec/polkit-gnome-authentication-agent-1; do
+    for agent in /usr/lib/mate-polkit/polkit-mate-authentication-agent-1                  /usr/lib/policykit-1-gnome/polkit-gnome-authentication-agent-1                  /usr/lib/polkit-gnome/polkit-gnome-authentication-agent-1                  /usr/libexec/polkit-gnome-authentication-agent-1                  /usr/bin/lxqt-policykit-agent; do
       if [ -x "$agent" ] && ! pgrep -f polkit-gnome-authentication >/dev/null 2>&1; then
         "$agent" >/dev/null 2>&1 &
         log "polkit agent: $agent (fallback spawn)"

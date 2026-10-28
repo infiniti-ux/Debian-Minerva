@@ -21,8 +21,8 @@ terminal|xterm|xterm
 file-manager|pcmanfm|pcmanfm
 text-editor|mousepad|mousepad
 notification-daemon|dunst|dunst
-clipboard|parcellite|parcellite
-polkit-agent|polkit-gnome-authentication-agent-1|policykit-1-gnome
+clipboard|xfce4-clipman|xfce4-clipman
+polkit-agent|/usr/lib/mate-polkit/polkit-mate-authentication-agent-1,polkit-gnome-authentication-agent-1|mate-polkit
 screenshot|scrot|scrot
 auth-lock|xfce4-screensaver-command|xfce4-screensaver
 power-manager|xfce4-power-manager|xfce4-power-manager
@@ -35,13 +35,27 @@ user-units|/usr/lib/systemd/user/minerva-dunst.service|debian-minerva
 user-preset|/usr/lib/systemd/user-preset/90-minerva.preset|debian-minerva
 mime-defaults|/etc/xdg/mimeapps.list|debian-minerva
 trace-tool|/usr/bin/minerva-trace|debian-minerva
+recorder|ffmpeg|ffmpeg
+printers|system-config-printer|system-config-printer
+a11y-orca|orca|orca
 '
 
 have() {
-  case "$1" in
-    /*) [ -e "$1" ] && return 0; command -v "$1" >/dev/null 2>&1 && return 0; return 1 ;;
-    *) command -v "$1" >/dev/null 2>&1 && return 0; return 1 ;;
-  esac
+  # a target may list comma-separated alternatives (distro renames);
+  # local vars ONLY — the matrix loop owns the global names
+  local hv_rest="$1" hv_t
+  while [ -n "$hv_rest" ]; do
+    case "$hv_rest" in
+      *,*) hv_t="${hv_rest%%,*}"; hv_rest="${hv_rest#*,}" ;;
+      *) hv_t="$hv_rest"; hv_rest="" ;;
+    esac
+    [ -n "$hv_t" ] || continue
+    case "$hv_t" in
+      /*) [ -e "$hv_t" ] && return 0; command -v "$hv_t" >/dev/null 2>&1 && return 0 ;;
+      *) command -v "$hv_t" >/dev/null 2>&1 && return 0 ;;
+    esac
+  done
+  return 1
 }
 
 missing=""

@@ -496,6 +496,71 @@ impl Exec {
                 ));
                 ok_json(vec![("brightness".into(), Value::n(pct)), ("sysfs".into(), Value::Bool(wrote))])
             }
+            "record_start" => {
+                // real screen recording on X11: ffmpeg x11grab into ~/Videos
+                if first_bin(&["ffmpeg"]).is_none() {
+                    return fail_json("ffmpeg missing - sudo apt install ffmpeg");
+                }
+                let pidfile = format!("{}/record.pid", self.runtime_dir);
+                if std::path::Path::new(&pidfile).exists() {
+                    return ok_json(vec![("already".into(), Value::Bool(true))]);
+                }
+                let ts = run_out("date +%Y%m%d-%H%M%S");
+                let out = format!(
+                    "{}/Videos/minerva-rec-{}.mp4",
+                    std::env::var("HOME").unwrap_or_else(|_| "/tmp".into()),
+                    ts.trim()
+                );
+                let disp = std::env::var("DISPLAY").unwrap_or_else(|_| ":0".into());
+                let pid = spawn_detached(&format!(
+                    "mkdir -p \"$HOME/Videos\"; ffmpeg -loglevel error -y -f x11grab -framerate 30 -i \"{}\" \"{}\"",
+                    disp, out
+                ));
+                match pid {
+                    Some(p) => {
+                        let _ = std::fs::write(&pidfile, p.to_string());
+                        ok_json(vec![("pid".into(), Value::n(p as f64)), ("file".into(), Value::s(out))])
+                    }
+                    None => fail_json("failed to start recorder"),
+                }
+            }
+            "record_stop" => {
+                let pidfile = format!("{}/record.pid", self.runtime_dir);
+                let p = std::fs::read_to_string(&pidfile).unwrap_or_default();
+                let _ = std::fs::remove_file(&pidfile);
+                // SIGINT lets ffmpeg finalise the mp4 container
+                if !p.trim().is_empty() {
+                    let _ = Command::new("kill").arg("-INT").arg(p.trim()).status();
+                }
+                ok_json(vec![])
+            }
+            "fractional_set" => {
+                // GNOME-on-X11 method: xrandr --scale with a panned
+                // framebuffer sized mode*scale
+                let f = value.get("n").as_f64();
+                let f = if f > 0.5 && f < 4.0 { f } else { 1.0 };
+                let cmd = format!(
+                    "o=$(xrandr 2>/dev/null | awk '/ primary/{{print $1; exit}}'); [ -z \"$o\" ] && o=$(xrandr 2>/dev/null | awk '/ connected /{{print $1; exit}}'); m=$(xrandr 2>/dev/null | awk '/\\*/{{print $1; exit}}'); {{ [ -n \"$o\" ] && [ -n \"$m\" ]; }} || exit 1; w=${{m%x*}}; h=${{m#*x}}; fw=$(awk -v a=\"$w\" -v b={f} 'BEGIN{{printf \"%d\", a*b+0.5}}'); fh=$(awk -v a=\"$h\" -v b={f} 'BEGIN{{printf \"%d\", a*b+0.5}}'); xrandr --output \"$o\" --scale {f}x{f} --fb ${{fw}}x${{fh}} 2>/dev/null",
+                    f = f
+                );
+                let st = Command::new("sh").arg("-c").arg(&cmd).status();
+                match st {
+                    Ok(s) if s.success() => ok_json(vec![("scale".into(), Value::n(f))]),
+                    _ => fail_json("xrandr fractional scale failed"),
+                }
+            }
+            "orca_toggle" => {
+                let on = value.get("on").as_bool();
+                if on {
+                    if first_bin(&["orca"]).is_none() {
+                        return fail_json("orca missing - sudo apt install orca");
+                    }
+                    spawn_detached("orca --replace >/dev/null 2>&1 &");
+                } else {
+                    spawn_detached("pkill -f orca 2>/dev/null; true");
+                }
+                ok_json(vec![("on".into(), Value::Bool(on))])
+            }
             "wifi_state" => {
                 let on = run_out("nmcli radio wifi 2>/dev/null").trim() == "enabled";
                 ok_json(vec![("on".into(), Value::Bool(on)), ("available".into(), Value::Bool(has_bin("nmcli")))])

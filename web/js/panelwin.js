@@ -1,5 +1,5 @@
 /* Debian Minerva — panel windows & real popovers.
-// version marker: 0.9.3
+// version marker: 0.10.0
  *
  * In a real X11 session every popover (Wi-Fi, audio, battery, calendar,
  * power) and the Settings window is its own X window loaded with a #role
@@ -251,7 +251,7 @@
       '<span style="flex:1"></span><button class="icon-btn" data-sw-close><span data-icon="close"></span></button></div>' +
       '<div class="sw-body"><nav class="sw-nav">' +
       [['appearance', 'Appearance', 'palette'], ['display', 'Display', 'monitor'], ['sound', 'Sound', 'volume'],
-       ['network', 'Network', 'wifi'], ['about', 'About', 'info']].map(function (p) {
+       ['network', 'Network', 'wifi'], ['a11y', 'Accessibility', 'info'], ['about', 'About', 'info']].map(function (p) {
         return '<button class="sw-nav-item" data-page="' + p[0] + '"><span data-icon="' + p[2] + '"></span>' + p[1] + '</button>';
       }).join('') +
       '</nav><div class="sw-main" data-sw-main></div></div>';
@@ -281,7 +281,11 @@
         '<div class="settings-card"><h3>Resolution</h3><div class="pop-hint" data-icon="info"> Applied with xrandr — real display modes</div>' +
         '<div class="res-list" data-res-list><div class="pop-empty">Reading display modes…</div></div></div>' +
         '<div class="settings-card"><h3>Brightness</h3><div class="pop-sliderrow"><span data-icon="sun"></span>' +
-        '<input type="range" min="20" max="100" value="' + Math.round((s.brightness || 0.8) * 100) + '" data-bright><b data-brightnum>' + Math.round((s.brightness || 0.8) * 100) + '%</b></div></div>';
+        '<input type="range" min="20" max="100" value="' + Math.round((s.brightness || 0.8) * 100) + '" data-bright><b data-brightnum>' + Math.round((s.brightness || 0.8) * 100) + '%</b></div></div>' +
+        '<div class="settings-card"><h3>Fractional scaling</h3><div class="pop-hint">xrandr --scale with panned framebuffer — the same method GNOME uses on X11</div><div class="theme-list">' +
+        [1, 1.25, 1.5, 2].map(function (n) {
+          return '<button class="chip-btn frac-chip" data-frac="' + n + '">' + Math.round(n * 100) + '%</button>';
+        }).join('') + '</div></div>';
       API.sys('res_list').then(function (r) {
         var box = $('[data-res-list]', el);
         if (!box) return;
@@ -294,6 +298,14 @@
         }).join('') : '<div class="pop-empty">No modes reported</div>';
         hydrate(box);
       });
+    } else if (page === 'a11y') {
+      main.innerHTML =
+        '<div class="settings-card"><h3>Screen reader</h3><div class="setting-row"><div class="sr-label"><strong>Orca</strong><small>Needs the orca package (Suggests)</small></div>' +
+        '<button class="chip-btn" data-orca>Toggle Orca</button></div></div>' +
+        '<div class="settings-card"><h3>Keyboard & focus</h3><div class="setting-row"><div class="sr-label"><strong>Visible focus ring</strong><small>Every interactive control shows a ring for keyboard users</small></div><span class="muted">Always on</span></div>' +
+        '<div class="setting-row"><div class="sr-label"><strong>Reduced motion</strong><small>Follows the system prefers-reduced-motion setting</small></div><span class="muted">Automatic</span></div></div>' +
+        '<div class="settings-card"><h3>Assistive technology bus</h3><div class="setting-row"><div class="sr-label"><strong>AT-SPI</strong><small>at-spi2-core ships as a recommendation with Minerva</small></div><span class="muted">System</span></div></div>';
+      hydrate(main);
     } else if (page === 'sound') {
       main.innerHTML = '<div class="settings-card">' + audioBody() + '</div>';
       wireAudio($('.settings-card', main));
@@ -345,6 +357,20 @@
       if (w) { dispatch({ type: 'set_wallpaper', value: w.dataset.wall }); renderSettingsPage(el, current); return; }
       var r = e.target.closest('[data-res]');
       if (r) { API.sys('res_set', { mode: r.dataset.res }); toast('Switching to ' + r.dataset.res + '…'); setTimeout(function () { renderSettingsPage(el, current); }, 2500); return; }
+      var fq = e.target.closest('[data-frac]');
+      if (fq) {
+        var n = parseFloat(fq.dataset.frac);
+        API.sys('fractional_set', { n: n }).then(function () { toast('Display scale ' + Math.round(n * 100) + '% applied'); })
+          .catch(function () { toast('Fractional scaling failed (xrandr)'); });
+        return;
+      }
+      var oc = e.target.closest('[data-orca]');
+      if (oc) {
+        var onNow = !oc.classList.contains('active');
+        API.sys('orca_toggle', { on: onNow }).then(function () { oc.classList.toggle('active', onNow); toast(onNow ? 'Orca starting…' : 'Orca stopped'); })
+          .catch(function (er) { toast(er && er.error ? er.error : 'Orca not installed'); });
+        return;
+      }
     });
     el.addEventListener('input', function (e) {
       if (e.target.matches('[data-scale]')) {
