@@ -50,7 +50,7 @@
 
   function defaultState() {
     return {
-      de: 'Debian Minerva', version: '0.9.1', seq: 1,
+      de: 'Debian Minerva', version: '0.9.2', seq: 1,
       theme: 'light', accent: '#a80030', wallpaper: 'swirl', scale: 1,
       volume: 0.65, brightness: 0.82,
       active_workspace: 0, show_overview: false, show_launcher: false,
@@ -738,7 +738,6 @@
     $('#qs-brightness').value = Math.round(S.brightness * 100);
     $('#qs-volume').value = Math.round(S.volume * 100);
     $('#notif-dnd').classList.toggle('on', !!S.toggles.dnd);
-    var srec = $('#sb-record'); if (srec) srec.classList.toggle('active', !!S.toggles.screen_record);
     $('#qs-tiles').innerHTML = QS_TILES.map(function (t) {
       var on = !!S.toggles[t[0]];
       return '<button class="qs-tile ' + (on ? 'on' : '') + '" data-tile="' + t[0] + '"><span class="qt-icon">' + I.svg(t[2], 18) + '</span>' + t[1] + '</button>';

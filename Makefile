@@ -3,7 +3,7 @@ SHELL := /bin/bash
 PORT ?= 8080
 PREFIX ?= /usr/local
 
-.PHONY: build run test self-test preview clean install uninstall reference deb session qa
+.PHONY: build run test self-test preview clean install uninstall reference deb session qa test-shell test-session test-all
 
 build:
 	cargo build --release
@@ -55,3 +55,12 @@ clean:
 
 qa:
 	./tools/qa.sh
+
+test-shell:
+	./tools/shell-test/run.sh
+
+test-session:
+	./tools/session-test/run.sh
+
+test-all: qa test-shell test-session
+	@echo "test-all: complete"
