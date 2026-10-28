@@ -2015,6 +2015,10 @@ impl Wm {
             win,
             StructureNotifyMask | PropertyChangeMask | EnterWindowMask,
         );
+        // ReparentWindow auto-remaps the client, but that map is redirected
+        // back to this WM as a MapRequest — map explicitly from our own
+        // connection (same-connection maps are never redirected)
+        XMapWindow(self.dpy, win);
 
         let c = Client {
             win,
@@ -4327,6 +4331,19 @@ impl Wm {
         match t {
             MapRequest => {
                 let w = ev.map.window;
+                if self.clients.contains_key(&w) {
+                    // already managed (e.g. the reparent auto-remap or a
+                    // client re-mapping itself): let the map through
+                    let show = self
+                        .clients
+                        .get(&w)
+                        .map(|c| !c.iconic && (c.desk == DESK_ALL || c.sticky || c.desk == self.desk))
+                        .unwrap_or(false);
+                    if show {
+                        XMapWindow(self.dpy, w);
+                    }
+                    break;
+                }
                 let mut attrs: XWindowAttributes = std::mem::zeroed();
                 clear_error();
                 if XGetWindowAttributes(self.dpy, w, &mut attrs) != 0 && error_seen() == 0 {
