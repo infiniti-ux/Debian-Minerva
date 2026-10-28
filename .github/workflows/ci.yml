@@ -11,8 +11,10 @@ jobs:
       - name: Install build deps
         run: |
           sudo apt-get update
-          sudo apt-get install -y libx11-dev libxext-dev libxrender-dev libxcomposite-dev libxdamage-dev libxrandr-dev libxfixes-dev libxcursor-dev
+          sudo apt-get install -y libx11-dev libxext-dev libxrender-dev libxcomposite-dev libxdamage-dev libxrandr-dev libxfixes-dev libxcursor-dev xvfb xterm
       - name: Cargo build (release)
         run: cargo build --release --verbose
       - name: Cargo test
         run: cargo test --all
+      - name: minerva-wm smoke test on Xvfb (real X11 protocol round trips)
+        run: xvfb-run -a -s "-screen 0 1280x1024x24" ./target/release/minerva-wm --smoke
