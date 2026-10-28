@@ -1500,6 +1500,10 @@ pub struct Wm {
     pub damage_map: HashMap<Damage, Window>,
     pub expect_unmap: HashMap<Window, c_int>,
     pub smoke_win: Window,
+    // second X connection acting as an independent CLIENT during --smoke:
+    // the X server does not redirect a client's own MapWindow back to it,
+    // so the WM connection can never be the test client
+    pub cdpy: *mut Display,
     // smoke-test instrumentation
     pub smoke: bool,
     pub smoke_events: u64,
@@ -1745,6 +1749,7 @@ impl Wm {
             damage_map: HashMap::new(),
             expect_unmap: HashMap::new(),
             smoke_win: 0,
+            cdpy: ptr::null_mut(),
             smoke,
             smoke_events: 0,
             smoke_steps: Vec::new(),
@@ -4556,17 +4561,47 @@ unsafe fn root_msg(wm: &Wm, win: Window, type_: Atom, data: [c_long; 5]) {
 unsafe fn pump(wm: &mut Wm, step: &str, pred: fn(&Wm) -> bool) {
     let start = std::time::Instant::now();
     let fd = XConnectionNumber(wm.dpy);
-    let mut pfd = PollFd {
-        fd,
-        events: POLLIN,
-        revents: 0,
+    let cfd = if wm.cdpy.is_null() {
+        -1
+    } else {
+        XConnectionNumber(wm.cdpy)
     };
+    let mut fds = [
+        PollFd {
+            fd,
+            events: POLLIN,
+            revents: 0,
+        },
+        PollFd {
+            fd: cfd,
+            events: POLLIN,
+            revents: 0,
+        },
+    ];
+    let nfds: c_ulong = if cfd >= 0 { 2 } else { 1 };
     loop {
         while XPending(wm.dpy) > 0 {
             let mut ev: XEvent = std::mem::zeroed();
             XNextEvent(wm.dpy, &mut ev);
             wm.smoke_events += 1;
             wm.handle_event(&mut ev);
+        }
+        // the client connection answers protocol messages like a real app:
+        // WM_DELETE_WINDOW -> destroy itself
+        if !wm.cdpy.is_null() {
+            while XPending(wm.cdpy) > 0 {
+                let mut ev: XEvent = std::mem::zeroed();
+                XNextEvent(wm.cdpy, &mut ev);
+                if ev.any.type_ == ClientMessage {
+                    let cm = ev.client;
+                    if cm.message_type == wm.a.wm_protocols
+                        && cm.data.l[0] == wm.a.wm_delete_window as c_long
+                    {
+                        XDestroyWindow(wm.cdpy, cm.window);
+                        XFlush(wm.cdpy);
+                    }
+                }
+            }
         }
         if wm.comp.active && wm.comp.dirty {
             wm.comp_paint();
@@ -4582,8 +4617,9 @@ unsafe fn pump(wm: &mut Wm, step: &str, pred: fn(&Wm) -> bool) {
             );
             std::process::exit(1);
         }
-        pfd.revents = 0;
-        poll(&mut pfd, 1, 100);
+        fds[0].revents = 0;
+        fds[1].revents = 0;
+        poll(fds.as_mut_ptr(), nfds, 100);
     }
 }
 
@@ -4681,17 +4717,30 @@ fn pred_closed(wm: &Wm) -> bool {
 
 unsafe fn run_smoke(wm: &mut Wm) {
     eprintln!("minerva-wm smoke: starting (display {}x{})", wm.sw, wm.sh);
+    // open a SECOND connection that behaves like an independent application:
+    // the X server does not redirect a client's own MapWindow back to itself,
+    // so the test client must not share the WM connection
+    let cdpy = XOpenDisplay(ptr::null());
+    if cdpy.is_null() {
+        eprintln!("minerva-wm smoke: FAIL — cannot open the second (client) X connection");
+        std::process::exit(1);
+    }
+    wm.cdpy = cdpy;
     // 1 — create a real client window and let the WM manage it
-    let win = XCreateSimpleWindow(wm.dpy, wm.root, 100, 100, 400, 300, 0, wm.c_border, wm.c_bg);
-    XStoreName(wm.dpy, win, cstr("minerva smoke").as_ptr());
-    prop_set_str(wm.dpy, win, wm.a.net_wm_name, true, "minerva smoke");
-    prop_set_atoms(wm.dpy, win, wm.a.wm_protocols, &[wm.a.wm_delete_window]);
+    let win = XCreateSimpleWindow(cdpy, wm.root, 100, 100, 400, 300, 0, wm.c_border, wm.c_bg);
+    XSelectInput(cdpy, win, StructureNotifyMask);
+    XStoreName(cdpy, win, cstr("minerva smoke").as_ptr());
+    prop_set_str(cdpy, win, wm.a.net_wm_name, true, "minerva smoke");
+    prop_set_atoms(cdpy, win, wm.a.wm_protocols, &[wm.a.wm_delete_window]);
+    XFlush(cdpy);
     wm.smoke_win = win;
-    XMapWindow(wm.dpy, win);
+    XMapWindow(cdpy, win);
+    XFlush(cdpy);
     pump(wm, "MapRequest -> managed with frame", pred_managed);
 
     // 2 — ConfigureRequest honored, frame geometry = client + decoration
-    XMoveResizeWindow(wm.dpy, win, 150, 160, 500, 400);
+    XMoveResizeWindow(cdpy, win, 150, 160, 500, 400);
+    XFlush(cdpy);
     pump(wm, "ConfigureRequest honored", pred_geom);
     let frame = wm.clients.get(&win).map(|c| c.frame).unwrap_or(0);
     let (fx, fy, fw, fh) = geom_of(wm, frame);
@@ -4790,6 +4839,9 @@ unsafe fn run_smoke(wm: &mut Wm) {
         eprintln!("  ok: {}", s);
     }
     XFlush(wm.dpy);
+    if !wm.cdpy.is_null() {
+        XCloseDisplay(wm.cdpy);
+    }
     XCloseDisplay(wm.dpy);
     std::process::exit(0);
 }
