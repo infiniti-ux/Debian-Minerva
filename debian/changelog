@@ -1,3 +1,30 @@
+debian-minerva (0.9.1) unstable; urgency=medium
+
+  * QA wave — every real defect the full-shell audit found, plus a
+    regression gate so they cannot return:
+      - four polling loops (state, running windows, events, pending
+        launches) and the battery refresh swallowed transient daemon
+        failures instead of throwing unhandled rejections (error-toast
+        spam whenever the daemon restarts);
+      - stored-state sanitisation: garbage in localStorage (edited or
+        from older versions) can no longer brick scale/volume/
+        brightness/pinned/workspace on next login;
+      - battery level NaN guard + 0..100 clamp;
+      - Super-key handler no longer dereferences a missing launcher
+        input in non-desktop window roles;
+      - session script: bare 'wait 0' (waits for EVERY child, changing
+        session teardown order) replaced with a guarded wait;
+      - CSS: dead 'pop2' keyframe reference restored (panel entry
+        animation was silently gone since 0.8.0), closing-exit
+        animations now win over later :not(.hidden) rules, dock scrolls
+        instead of overflowing with many windows, QS/calendar clamp to
+        viewport, notification text wraps, faint text meets contrast,
+        :focus-visible ring for keyboard users;
+      - NEW tools/qa.sh + 'make qa': syntax gates + bug-pattern gates
+        that fail the build if any fixed defect reappears.
+
+ -- Minerva Team <minerva@localhost>  Wed, 28 Oct 2026 16:20:00 +0700
+
 debian-minerva (0.9.0) unstable; urgency=medium
 
   * Platform-contracts release — the layer that makes a shell feel like a
