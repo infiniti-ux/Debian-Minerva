@@ -1584,6 +1584,18 @@ fn truncate(font: *mut XFontStruct, s: &str, maxw: c_int) -> String {
     out
 }
 
+unsafe fn draw_text(dpy: *mut Display, gc: GC, dr: Drawable, font: *mut XFontStruct, color: c_ulong, x: c_int, y: c_int, s: &str) {
+    XSetForeground(dpy, gc, color);
+    XSetFont(dpy, gc, font as Font);
+    let buf = latin1(s);
+    XDrawString(dpy, dr, gc, x, y, buf.as_ptr(), (buf.len() - 1) as c_int);
+}
+
+unsafe fn fill(dpy: *mut Display, gc: GC, dr: Drawable, color: c_ulong, x: c_int, y: c_int, w: c_int, h: c_int) {
+    XSetForeground(dpy, gc, color);
+    XFillRectangle(dpy, dr, gc, x, y, w.max(0) as c_uint, h.max(0) as c_uint);
+}
+
 fn now_secs() -> u64 {
     std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
@@ -2644,11 +2656,17 @@ impl Wm {
                     }
                 }
             } else if atom == self.a.net_wm_state_sticky {
+                let mut newdesk = 0u32;
+                let mut found = false;
                 if let Some(c) = self.clients.get_mut(&win) {
                     c.sticky = on;
                     c.desk = if on { DESK_ALL } else { self.desk };
+                    newdesk = c.desk;
+                    found = true;
+                }
+                if found {
                     self.update_wm_state_atoms(win);
-                    prop_set_longs(self.dpy, win, self.a.net_wm_desktop, &[c.desk as c_long]);
+                    prop_set_longs(self.dpy, win, self.a.net_wm_desktop, &[newdesk as c_long]);
                 }
             } else if atom == self.a.net_wm_state_hidden {
                 self.set_iconic(win, on);
@@ -2784,27 +2802,16 @@ impl Wm {
         };
     }
 
-    unsafe fn draw_text(&mut self, dr: Drawable, font: *mut XFontStruct, color: c_ulong, x: c_int, y: c_int, s: &str) {
-        XSetForeground(self.dpy, self.gc, color);
-        XSetFont(self.dpy, self.gc, font as Font);
-        let buf = latin1(s);
-        XDrawString(self.dpy, dr, self.gc, x, y, buf.as_ptr(), (buf.len() - 1) as c_int);
-    }
-
-    unsafe fn fill(&mut self, dr: Drawable, color: c_ulong, x: c_int, y: c_int, w: c_int, h: c_int) {
-        XSetForeground(self.dpy, self.gc, color);
-        XFillRectangle(self.dpy, dr, self.gc, x, y, w.max(0) as c_uint, h.max(0) as c_uint);
-    }
 
     unsafe fn draw_panel(&mut self) {
         if self.panel == 0 {
             return;
         }
         let (sw, panel) = (self.sw, self.panel);
-        self.fill(panel, self.c_panel, 0, 0, sw, PANEL_H);
+        fill(self.dpy, self.gc, panel, self.c_panel, 0, 0, sw, PANEL_H);
         // launcher button
-        self.fill(panel, self.c_bar_active, 6, 4, 118, PANEL_H - 8);
-        self.draw_text(panel, self.font_big, self.c_accent, 16, (PANEL_H + self.ascent_big) / 2 - 1, "Minerva");
+        fill(self.dpy, self.gc, panel, self.c_bar_active, 6, 4, 118, PANEL_H - 8);
+        draw_text(self.dpy, self.gc, panel, self.font_big, self.c_accent, 16, (PANEL_H + self.ascent_big) / 2 - 1, "Minerva");
         // focused window title
         let title = self
             .clients
@@ -2812,33 +2819,33 @@ impl Wm {
             .map(|c| truncate(self.font, &c.title, self.sw - 420))
             .unwrap_or_default();
         if !title.is_empty() {
-            self.draw_text(panel, self.font, self.c_text, 140, (PANEL_H + self.ascent) / 2 - 1, &title);
+            draw_text(self.dpy, self.gc, panel, self.font, self.c_text, 140, (PANEL_H + self.ascent) / 2 - 1, &title);
         }
         // right cluster: battery, date, clock, menu button
         let mut rx = self.sw - 10;
         let menu_w = 64;
         rx -= menu_w;
-        self.fill(panel, self.c_bar, rx, 4, menu_w, PANEL_H - 8);
-        self.draw_text(panel, self.font, self.c_text, rx + 12, (PANEL_H + self.ascent) / 2 - 1, "Menu");
+        fill(self.dpy, self.gc, panel, self.c_bar, rx, 4, menu_w, PANEL_H - 8);
+        draw_text(self.dpy, self.gc, panel, self.font, self.c_text, rx + 12, (PANEL_H + self.ascent) / 2 - 1, "Menu");
         let clock_w = text_width(self.font_big, &self.panel_clock) + 14;
         rx -= clock_w;
-        self.draw_text(panel, self.font_big, self.c_text, rx + 7, (PANEL_H + self.ascent_big) / 2 - 1, &self.panel_clock);
+        draw_text(self.dpy, self.gc, panel, self.font_big, self.c_text, rx + 7, (PANEL_H + self.ascent_big) / 2 - 1, &self.panel_clock);
         if !self.panel_date.is_empty() {
             let dw = text_width(self.font, &self.panel_date) + 12;
             rx -= dw;
-            self.draw_text(panel, self.font, self.c_dim, rx + 6, (PANEL_H + self.ascent) / 2 - 1, &self.panel_date);
+            draw_text(self.dpy, self.gc, panel, self.font, self.c_dim, rx + 6, (PANEL_H + self.ascent) / 2 - 1, &self.panel_date);
         }
         if !self.panel_battery.is_empty() {
             let bw = text_width(self.font, &self.panel_battery) + 12;
             rx -= bw;
-            self.draw_text(panel, self.font, self.c_dim, rx + 6, (PANEL_H + self.ascent) / 2 - 1, &self.panel_battery);
+            draw_text(self.dpy, self.gc, panel, self.font, self.c_dim, rx + 6, (PANEL_H + self.ascent) / 2 - 1, &self.panel_battery);
         }
         // workspace pips
         rx -= 16;
         for i in (0..NDESKS).rev() {
             rx -= 14;
             let on = i == self.desk;
-            self.fill(
+            fill(self.dpy, self.gc, 
                 panel,
                 if on { self.c_accent } else { self.c_bar_active },
                 rx,
@@ -2848,7 +2855,7 @@ impl Wm {
             );
         }
         // hairline under panel
-        self.fill(panel, self.c_border, 0, PANEL_H - 1, sw, 1);
+        fill(self.dpy, self.gc, panel, self.c_border, 0, PANEL_H - 1, sw, 1);
         XFlush(self.dpy);
     }
 
@@ -2858,8 +2865,8 @@ impl Wm {
         z.push((6, 124, Act::OpenLauncher));
         let menu_x0 = self.sw - 10 - 64;
         z.push((menu_x0, menu_x0 + 64, Act::OpenQs));
-        let mut rx = menu_x0 - 14 * NDESKS as c_int - 16;
-        for i in 0..NDESKS {
+        let rx = menu_x0 - 14 * NDESKS as c_int - 16;
+        for i in 0..(NDESKS as c_int) {
             z.push((rx + i * 14, rx + i * 14 + 10, Act::Desk(i as i64)));
         }
         z
@@ -2870,8 +2877,8 @@ impl Wm {
             return;
         }
         let (sw, dock) = (self.sw, self.dock);
-        self.fill(dock, self.c_panel, 0, 0, sw, DOCK_H);
-        self.fill(dock, self.c_border, 0, 0, sw, 1);
+        fill(self.dpy, self.gc, dock, self.c_panel, 0, 0, sw, DOCK_H);
+        fill(self.dpy, self.gc, dock, self.c_border, 0, 0, sw, 1);
         let wins: Vec<Window> = self
             .stack
             .iter()
@@ -2896,7 +2903,7 @@ impl Wm {
                 170
             };
             let focused = *w == self.focus && !c.iconic;
-            self.fill(
+            fill(self.dpy, self.gc, 
                 dock,
                 if focused { self.c_sel } else { self.c_bar },
                 x,
@@ -2905,11 +2912,11 @@ impl Wm {
                 DOCK_H - 14,
             );
             if focused {
-                self.fill(dock, self.c_accent, x, 7, 3, DOCK_H - 14);
+                fill(self.dpy, self.gc, dock, self.c_accent, x, 7, 3, DOCK_H - 14);
             }
             let raw = if c.iconic { format!("({})", c.title) } else { c.title.clone() };
             let label = truncate(self.font, &raw, btnw - 16);
-            self.draw_text(
+            draw_text(self.dpy, self.gc, 
                 dock,
                 self.font,
                 if c.iconic { self.c_dim } else { self.c_text },
@@ -3248,20 +3255,20 @@ impl Wm {
             None => return,
         };
         let (win, w, items, sel, kind) = (p.0, p.1, p.2, p.3, p.4);
-        self.fill(win, self.c_popup, 0, 0, w, 9999);
+        fill(self.dpy, self.gc, win, self.c_popup, 0, 0, w, 9999);
         let mut y = 6;
         for (i, it) in items.iter().enumerate() {
             if y + 30 > p.5 {
                 break;
             }
             if i == sel {
-                self.fill(win, self.c_sel, 4, y, w - 8, 30);
-                self.fill(win, self.c_accent, 4, y, 3, 30);
+                fill(self.dpy, self.gc, win, self.c_sel, 4, y, w - 8, 30);
+                fill(self.dpy, self.gc, win, self.c_accent, 4, y, 3, 30);
             }
-            self.draw_text(win, self.font, if i == sel { self.c_text } else { self.c_dim }, 16, y + 20, &it.label);
+            draw_text(self.dpy, self.gc, win, self.font, if i == sel { self.c_text } else { self.c_dim }, 16, y + 20, &it.label);
             if !it.right.is_empty() {
                 let tw = text_width(self.font, &it.right);
-                self.draw_text(win, self.font, self.c_dim, w - tw - 14, y + 20, &it.right);
+                draw_text(self.dpy, self.gc, win, self.font, self.c_dim, w - tw - 14, y + 20, &it.right);
             }
             y += 30;
         }
@@ -3404,7 +3411,7 @@ impl Wm {
     }
 
     /// returns Some(act) when a popup row was clicked / activated
-    unsafe fn popup_click(&mut self, win: Window, x: c_int, y: c_int, select_only: bool) -> Option<Act> {
+    unsafe fn popup_click(&mut self, win: Window, _x: c_int, y: c_int, select_only: bool) -> Option<Act> {
         let p = self.popup.as_ref()?;
         if p.win != win {
             return None;
