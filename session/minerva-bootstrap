@@ -1,0 +1,78 @@
+#!/bin/sh
+# minerva-bootstrap — the component matrix of a complete desktop, in the
+# order every "build a DE from scratch" tutorial walks it (session entry,
+# window manager, panel, launcher, notifications, clipboard, polkit, apps,
+# theming). --check prints OK/MISSING per component; --fix installs whatever
+# is missing through apt (run as root or via sudo).
+set -u
+
+# name | check-target (file path or binary) | debian package
+COMPONENTS='
+session-entry|/usr/share/xsessions/minerva.desktop|debian-minerva
+session-script|/usr/bin/minerva-session|debian-minerva
+rust-daemon|/usr/bin/minerva-sessiond|debian-minerva
+shell-surface|/usr/share/minerva/web/index.html|debian-minerva
+shell-launcher|/usr/bin/minerva-shell-start|debian-minerva
+session-manager|xfce4-session|xfce4-session
+window-manager|xfwm4|xfwm4
+xfconf|xfconf-query|xfconf
+browser|chromium|chromium
+terminal|xterm|xterm
+file-manager|pcmanfm|pcmanfm
+text-editor|mousepad|mousepad
+notification-daemon|dunst|dunst
+clipboard|parcellite|parcellite
+polkit-agent|polkit-gnome-authentication-agent-1|policykit-1-gnome
+screenshot|scrot|scrot
+display-tools|xrandr|x11-xserver-utils
+wm-tools|wmctrl|wmctrl
+fonts|fc-list|fontconfig
+'
+
+have() {
+  case "$1" in
+    /*) [ -e "$1" ] && return 0; command -v "$1" >/dev/null 2>&1 && return 0; return 1 ;;
+    *) command -v "$1" >/dev/null 2>&1 && return 0; return 1 ;;
+  esac
+}
+
+missing=""
+printf 'Minerva bootstrap — desktop component matrix\n'
+printf '--------------------------------------------------\n'
+rest="$COMPONENTS"
+while [ -n "$rest" ]; do
+  line="${rest%%
+*}"
+  case "$rest" in
+    *"
+"*) rest="${rest#*
+}" ;;
+    *) rest="" ;;
+  esac
+  [ -n "$line" ] || continue
+  name="${line%%|*}"; tmp="${line#*|}"; target="${tmp%%|*}"; pkg="${tmp##*|}"
+  if have "$target"; then
+    printf '  OK       %-22s %s\n' "$name" "$pkg"
+  else
+    printf '  MISSING  %-22s %s\n' "$name" "$pkg"
+    missing="$missing $pkg"
+  fi
+done
+printf '--------------------------------------------------\n'
+
+if [ -z "$missing" ]; then
+  echo "Result: every desktop component present — the session is complete."
+  exit 0
+fi
+echo "Missing packages:$missing"
+if [ "${1:-}" = "--fix" ]; then
+  if [ "$(id -u)" = 0 ]; then
+    # shellcheck disable=SC2086
+    apt-get install -y $missing
+  else
+    echo "Run as root to install:  sudo apt-get install -y$missing"
+  fi
+else
+  echo "Fix with:  sudo minerva-bootstrap --fix"
+fi
+exit 1

@@ -1,3 +1,20 @@
+debian-minerva (0.6.2) unstable; urgency=medium
+
+  * Tutorial-parity pass (Debian Wiki DesktopEnvironment + the LearnLinuxTV
+    "create your own DE" recipe the user pointed at; docs/PARITY.md maps
+    every step):
+      - session services a real desktop owes the user are now started by
+        minerva-shell-start: dunst (with an Aluminium-styled dunstrc) for
+        app notifications, parcellite clipboard, polkit-gnome auth agent;
+      - Super+L lock shortcut added to the xfconf defaults;
+      - new /usr/bin/minerva-bootstrap: the full desktop component matrix
+        (session entry, WM, panel, launcher, notifications, clipboard,
+        polkit, apps, fonts) with --check and --fix (apt install missing);
+      - docs/PARITY.md: step-by-step mapping tutorial/Omarchy recipe vs
+        Minerva components.
+
+ -- Minerva Team <minerva@localhost>  Wed, 28 Oct 2026 10:05:00 +0700
+
 debian-minerva (0.6.1) unstable; urgency=medium
 
   * "mana aluminiumnya" — the shell surface no longer depends on each base
