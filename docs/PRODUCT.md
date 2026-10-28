@@ -66,7 +66,7 @@ below, not abandoned.
   (nmcli), resolution/brightness/night-light (xrandr), theme/wallpaper/
   scale state, apt search/install, power (logind).
 * Notification daemon: dunst for app notifications + first-party shade UI.
-* Clipboard: parcellite autostart. Lock screen: logind lock + DM greeter.
+* Clipboard: xfce4-clipman autostart (unit + fallback). Lock screen: xfce4-screensaver PAM lock.
 * Power: logind via session commands (suspend/reboot/shutdown/lock).
 * Audio/network/Bluetooth/printer: PipeWire-Pulse, NetworkManager, bluez,
   CUPS — system services configured by the settings daemon, not replaced.
@@ -106,7 +106,7 @@ shell and shell i18n: v0.5.
 
 ## Fase 6 — session & services (shipped, v0.4)
 
-Session manager, autostart (dunst, parcellite, polkit agent), notification
+Session manager, autostart (dunst, xfce4-clipman, polkit agent), notification
 daemon, clipboard manager, polkit agent, power manager (logind), audio/
 network services integration, screen lock, logging (`session.log` +
 on-screen failure toast), crash recovery (daemon watchdog + kiosk rescue
@@ -126,7 +126,7 @@ Update notifier & crash reporter: v0.5.
 | pdf | atril | evince, okular |
 | screenshot | scrot | import (ImageMagick) |
 | calculator | galculator | gnome-calculator |
-| clipboard | parcellite | — |
+| clipboard | xfce4-clipman | parcellite left Debian in trixie |
 | notifications | dunst | — |
 
 GTK/Qt/icon/cursor/font theming of third-party apps: v0.5 (ship a Minerva
@@ -184,7 +184,7 @@ the surface and the system layer only:
 - **Lock** is a real locker: the shell draws the lock surface, the daemon
   flips `$XDG_RUNTIME_DIR/minerva/locked`, and the session enforcer restacks
   the shell above every window while the flag exists.
-- Desktop services (dunst, parcellite, polkit agent) run as systemd
+- Desktop services (dunst, xfce4-clipman, polkit agent) run as systemd
   **user** units wanted by `graphical-session.target`, enabled for every
   user through a vendor preset; `minerva-shell-start` only spawns them as
   a fallback when the user unit is not active.

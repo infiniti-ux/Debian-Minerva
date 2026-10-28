@@ -99,7 +99,7 @@ A display manager (GDM, LightDM, SDDM) starts the **Minerva** session from
 
 1. The script detects screen geometry (xrandr/xdpyinfo), writes the Openbox
    `rc.xml` plus the bundled slim dark "Minerva" Openbox theme, autostarts
-   standard desktop services (dunst, parcellite, polkit agent) and mints a
+   standard desktop services (dunst, xfce4-clipman, polkit agent) and mints a
    per-session token (`$XDG_RUNTIME_DIR/minerva/session.env`, mode 600).
 2. It starts `minerva-sessiond` bound to `127.0.0.1:47801` (env
    `MINERVA_SESSION_MODE=x11`, `MINERVA_BROWSER`, `MINERVA_SESSION_PID`).

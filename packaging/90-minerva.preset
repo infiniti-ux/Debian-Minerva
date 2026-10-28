@@ -1,5 +1,5 @@
 # Vendor preset for Minerva's systemd USER units: every user logging into a
 # graphical session gets the desktop services enabled without manual steps.
 enable minerva-dunst.service
-enable minerva-parcellite.service
+enable minerva-clipman.service
 enable minerva-polkit.service

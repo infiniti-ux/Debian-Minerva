@@ -111,7 +111,7 @@ for a in xterm pcmanfm scrot; do
 done
 
 echo "[services]"
-for svc in dunst parcellite; do
+for svc in dunst xfce4-clipman; do
   pgrep -x "$svc" >/dev/null 2>&1 && ok "$svc running" || warn "$svc not running (optional)"
 done
 
@@ -126,7 +126,7 @@ if [ "${XDG_CURRENT_DESKTOP:-}" = "Minerva" ]; then
 else
   bad "XDG_CURRENT_DESKTOP='${XDG_CURRENT_DESKTOP:-unset}' — portals and OnlyShowIn will not match Minerva"
 fi
-for u in minerva-dunst minerva-parcellite minerva-polkit; do
+for u in minerva-dunst minerva-clipman minerva-polkit; do
   [ -f "/usr/lib/systemd/user/$u.service" ] || warn "missing user unit: $u.service"
 done
 if [ -f /usr/lib/systemd/user-preset/90-minerva.preset ]; then
@@ -140,7 +140,7 @@ else
   warn "no /etc/xdg/mimeapps.list (postinst writes it on install)"
 fi
 if command -v systemctl >/dev/null 2>&1; then
-  for u in minerva-dunst minerva-parcellite minerva-polkit; do
+  for u in minerva-dunst minerva-clipman minerva-polkit; do
     if systemctl --user is-active --quiet "$u.service" 2>/dev/null; then
       ok "$u.service active (systemd)"
     else

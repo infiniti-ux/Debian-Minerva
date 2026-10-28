@@ -1,11 +1,11 @@
 [Unit]
-Description=Minerva clipboard manager (parcellite)
+Description=Minerva clipboard history (xfce4-clipman, Debian 13 replacement for parcellite)
 PartOf=graphical-session.target
 After=graphical-session.target
 
 [Service]
 Type=simple
-ExecStart=/usr/bin/parcellite
+ExecStart=/usr/bin/xfce4-clipman
 Restart=on-failure
 RestartSec=1
 

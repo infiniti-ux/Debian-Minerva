@@ -10,9 +10,9 @@ Homepage: https://github.com/infiniti-ux/Debian-Minerva
 Package: debian-minerva
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}, xfce4-session, xfwm4, xfconf, chromium, curl, x11-utils, wmctrl, xterm
-Recommends: openbox, xfce4-screensaver, xfce4-power-manager, xdg-desktop-portal, xdg-desktop-portal-gtk, network-manager, x11-xserver-utils, dbus-x11, dex, dunst, parcellite, scrot, open-vm-tools-desktop,
+Recommends: openbox, xfce4-screensaver, xfce4-power-manager, mate-polkit, xdg-desktop-portal, xdg-desktop-portal-gtk, network-manager, x11-xserver-utils, dbus-x11, dex, dunst, xfce4-clipman, scrot, open-vm-tools-desktop,
  pcmanfm, mousepad, viewnior, xarchiver, galculator, atril, xfce4-terminal
-Suggests: cage, weston
+Suggests: cage, weston, ffmpeg, orca, system-config-printer, at-spi2-core
 Description: Debian Minerva desktop environment (Rust core, real X11 session)
  Minerva is a real desktop environment for Debian. A dependency-free Rust
  session daemon owns session state and the system layer: it launches real

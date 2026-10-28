@@ -50,7 +50,7 @@
 
   function defaultState() {
     return {
-      de: 'Debian Minerva', version: '0.9.3', seq: 1,
+      de: 'Debian Minerva', version: '0.10.0', seq: 1,
       theme: 'light', accent: '#a80030', wallpaper: 'swirl', scale: 1,
       volume: 0.65, brightness: 0.82,
       active_workspace: 0, show_overview: false, show_launcher: false,
@@ -198,7 +198,15 @@
       case 'set_scale': S.scale = clamp(Number(a.value), .75, 1.5); break;
       case 'set_volume': S.volume = clamp(Number(a.value), 0, 1); break;
       case 'set_brightness': S.brightness = clamp(Number(a.value), .2, 1); break;
-      case 'toggle': S.toggles[a.key] = a.value === undefined ? !S.toggles[a.key] : !!a.value; break;
+      case 'toggle': S.toggles[a.key] = a.value === undefined ? !S.toggles[a.key] : !!a.value;
+        if (a.key === 'screen_record' && X11) {
+          if (S.toggles.screen_record) {
+            API.sys('record_start', {}).catch(function () { toast('Screen recording needs ffmpeg: sudo apt install ffmpeg'); });
+          } else {
+            API.sys('record_stop', {}).catch(function () {});
+          }
+        }
+        break;
       case 'notify': S.notifications.unshift({ id: S.next_id++, app: a.app || 'system', icon: a.icon || 'info', title: a.title || '', body: a.body || '', time: 'just now' }); S.notifications = S.notifications.slice(0, 30); break;
       case 'dismiss_notification': S.notifications = S.notifications.filter(function (n) { return n.id !== Number(a.id); }); break;
       case 'clear_notifications': S.notifications = []; break;
