@@ -1,0 +1,89 @@
+#!/bin/sh
+# minerva-trace — forensic session recorder.
+#
+# Records a time-series of live session signals (daemon health, window
+# list, WM/shell/browser liveness, geometry) to a JSONL file so a broken
+# session can be debugged AFTER the fact from a recording, instead of
+# from a description. Pair with `minerva-verify` for the static picture.
+#
+# usage: minerva-trace [seconds] [outfile]
+#   default: 30 seconds, ~/minerva-trace.jsonl
+#
+# Each line: {"ts":…, "health":…, "windows":N, "shell_win":bool,
+#             "wm":bool, "browser":bool, "geometry":"WxH+X+Y"}
+set -u
+
+RT="${XDG_RUNTIME_DIR:-/tmp}/minerva"
+ENVF="$RT/session.env"
+if [ ! -f "$ENVF" ]; then
+  echo "minerva-trace: no session env at $ENVF — run this inside a Minerva session" >&2
+  exit 1
+fi
+# shellcheck disable=SC1090
+. "$ENVF"
+
+DUR="${1:-30}"
+OUT="${2:-$HOME/minerva-trace.jsonl}"
+INTERVAL=2
+
+case "$DUR" in
+  ''|*[!0-9]*) echo "minerva-trace: duration must be seconds (got '$DUR')" >&2; exit 1 ;;
+esac
+
+: > "$OUT" || { echo "minerva-trace: cannot write $OUT" >&2; exit 1; }
+echo "minerva-trace: recording ${DUR}s every ${INTERVAL}s -> $OUT"
+
+STOP=no
+trap 'STOP=yes' TERM INT
+
+bool() { [ "$1" = 0 ] && echo true || echo false; }
+
+record_once() {
+  ts="$(date -Iseconds 2>/dev/null || date '+%Y-%m-%dT%H:%M:%S')"
+
+  health='null'
+  if command -v curl >/dev/null 2>&1 && [ -n "${MINERVA_API:-}" ]; then
+    health="$(curl -fsS "$MINERVA_API/health" 2>/dev/null || echo null)"
+  fi
+
+  wins=0
+  shell_win=false
+  geo='""'
+  if command -v wmctrl >/dev/null 2>&1; then
+    wlist="$(wmctrl -l -G 2>/dev/null)"
+    wins="$(printf '%s\n' "$wlist" | grep -c .)"
+    line="$(printf '%s\n' "$wlist" | awk '$NF == "Minerva" {print; exit}')"
+    if [ -n "$line" ]; then
+      shell_win=true
+      geo="$(printf '%s' "$line" | awk '{printf "\"%sx%s+%s+%s\"", $5, $6, $3, $4}')"
+    fi
+  fi
+
+  wm=false
+  pgrep -x xfwm4 >/dev/null 2>&1 || pgrep -x openbox >/dev/null 2>&1 && wm=true
+  pgrep -x xfwm4 >/dev/null 2>&1 && wm=true
+
+  browser=false
+  for b in chromium chromium-browser firefox-esr firefox; do
+    pgrep -x "$b" >/dev/null 2>&1 && { browser=true; break; }
+  done
+
+  daemon=false
+  [ -n "${MINERVA_API:-}" ] && [ "$health" != null ] && daemon=true
+
+  printf '{"ts":"%s","health":%s,"windows":%s,"shell_win":%s,"wm":%s,"browser":%s,"daemon":%s,"geometry":%s}\n' \
+    "$ts" "$health" "$wins" "$shell_win" "$wm" "$browser" "$daemon" "$geo" >> "$OUT"
+}
+
+end=$(( $(date +%s) + DUR ))
+while [ "$STOP" = no ] && [ "$(date +%s)" -lt "$end" ]; do
+  record_once
+  sleep "$INTERVAL"
+done
+
+lines="$(grep -c . "$OUT" 2>/dev/null || echo 0)"
+echo "minerva-trace: wrote $lines samples to $OUT"
+if [ "$lines" -gt 0 ] && ! grep -q '"shell_win":true' "$OUT"; then
+  echo "minerva-trace: WARNING — shell surface window never seen during recording"
+fi
+exit 0
