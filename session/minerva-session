@@ -1,19 +1,20 @@
 #!/bin/sh
-# minerva-session — Minerva desktop session (v3, single-surface).
+# minerva-session — Minerva desktop session (v4, wrapper base).
 #
-# Architecture (see docs/PRODUCT.md for the full product roadmap):
-#   * minerva-sessiond  : Rust daemon — session state, app launching, system
-#                         layer (volume, Wi-Fi, resolution, brightness, power)
-#   * openbox           : X11 window manager (EWMH) — manages REAL app windows
-#   * ONE fullscreen shell surface (chromium --kiosk) that draws the whole
-#     Minerva desktop: wallpaper, top bar, taskbar dock, launcher, popovers,
-#     notifications, settings. No per-panel windows, no placement guessing:
-#     a kiosk window is fullscreen by itself, everywhere, always.
-#   * real applications run as ordinary X clients on top (xterm, pcmanfm,
-#     chromium --app, ...), listed in the dock via the EWMH client list.
-#
-# Fallback: without openbox/DISPLAY the same surface runs kiosk-style under
-# cage/weston so the session never dead-ends at a black screen.
+# v0.6.0 architecture: Minerva keeps its own Aluminium-accurate shell and its
+# Rust session daemon, but the *session machinery* is delegated to proven
+# Debian components instead of hand-rolled bootstrap:
+#   * base session  : xfce4-session + xfwm4  (X11, EWMH, saves/autostart/polkit
+#                     plumbing that has shipped in Debian for two decades)
+#                     with xfdesktop/xfce4-panel autostart masked, so the only
+#                     surface the user sees is the Minerva shell;
+#   * fallback base : openbox + minerva-autostart (the 0.5.x proven path);
+#   * last resort   : single kiosk window (cage/weston/no-WM boxes);
+#   * minerva-sessiond : Rust daemon — session state, app launching, system
+#                     layer (volume, Wi-Fi, resolution, brightness, power);
+#   * the shell surface itself is started through XDG autostart
+#     (minerva-shell.desktop, OnlyShowIn=Minerva) by whichever base runs, so
+#     every branch gets it through the desktop's own autostart machinery.
 set -u
 
 PORT="${MINERVA_PORT:-47801}"
@@ -34,13 +35,11 @@ URL="http://$BIND:$PORT/?token=$TOKEN"
 
 DAEMON_PID=""
 WATCH_PID=""
-SHELL_PID=""
-WM_PID=""
-ENFORCE_PID=""
+BASE_PID=""
 WM_WATCH_PID=""
+ENFORCE_PID=""
 EXITING=no
 PIDFILE="$STATE/sessiond.pid"
-SHELL_PROFILE="$RT/shell-$$"
 
 log() { echo "[minerva-session] $*" >>"$LOG"; }
 
@@ -51,11 +50,35 @@ log() { echo "[minerva-session] $*" >>"$LOG"; }
 } >"$RT/session.env"
 chmod 600 "$RT/session.env" 2>/dev/null
 
+# ---------------------------------------------------------------- base choice
+MULTIWIN=no
+BASE=kiosk
+if [ -n "${DISPLAY:-}" ]; then
+  if command -v xfce4-session >/dev/null 2>&1 && command -v xfwm4 >/dev/null 2>&1; then
+    BASE=xfce; MULTIWIN=yes
+  elif command -v openbox >/dev/null 2>&1; then
+    BASE=openbox; MULTIWIN=yes
+  fi
+fi
+MINERVA_SESSION_MODE="$([ "$MULTIWIN" = yes ] && echo x11 || echo kiosk)"
+export MINERVA_SESSION_MODE
+
+SCREEN_W=1920
+SCREEN_H=1080
+if command -v xrandr >/dev/null 2>&1; then
+  dims="$(xrandr 2>/dev/null | awk '/\*/ {print $1; exit}')"
+  case "$dims" in *x*) SCREEN_W="${dims%%x*}"; SCREEN_H="${dims##*x}" ;; esac
+elif command -v xdpyinfo >/dev/null 2>&1; then
+  dims="$(xdpyinfo 2>/dev/null | awk '/dimensions:/ {print $2; exit}')"
+  case "$dims" in *x*) SCREEN_W="${dims%%x*}"; SCREEN_H="${dims##*x}" ;; esac
+fi
+log "screen ${SCREEN_W}x${SCREEN_H} mode=$MINERVA_SESSION_MODE base=$BASE"
+
 start_daemon() {
   "$DAEMON" --port "$PORT" --bind "$BIND" --token "$TOKEN" --web-root "$WEBROOT" >>"$LOG" 2>&1 &
   DAEMON_PID=$!
   echo "$DAEMON_PID" >"$PIDFILE"
-  log "daemon started pid=$DAEMON_PID port=$PORT mode=${MINERVA_SESSION_MODE:-kiosk}"
+  log "daemon started pid=$DAEMON_PID port=$PORT mode=$MINERVA_SESSION_MODE"
 }
 
 stop_daemon() {
@@ -71,50 +94,28 @@ cleanup() {
   EXITING=yes
   log "session ending"
   [ -n "$WATCH_PID" ] && kill "$WATCH_PID" 2>/dev/null
-  [ -n "$SHELL_PID" ] && kill "$SHELL_PID" 2>/dev/null
-  [ -n "$WM_PID" ] && kill "$WM_PID" 2>/dev/null
+  [ -n "$BASE_PID" ] && kill "$BASE_PID" 2>/dev/null
   [ -n "$WM_WATCH_PID" ] && kill "$WM_WATCH_PID" 2>/dev/null
   [ -n "$ENFORCE_PID" ] && kill "$ENFORCE_PID" 2>/dev/null
   pkill -f "user-data-dir=$RT/shell-" 2>/dev/null
-  pkill -f "user-data-dir=$RT/panels" 2>/dev/null
   stop_daemon
   rm -f "$RT/session.env"
   rm -rf "$RT"/shell-* 2>/dev/null
 }
 trap cleanup EXIT INT TERM
 
-pick_browser() {
-  if [ -n "${MINERVA_BROWSER:-}" ] && command -v "$MINERVA_BROWSER" >/dev/null 2>&1; then
-    echo "$MINERVA_BROWSER"; return 0
-  fi
-  for b in chromium chromium-browser firefox-esr firefox epiphany-browser; do
-    command -v "$b" >/dev/null 2>&1 && { echo "$b"; return 0; }
-  done
-  echo ""
-}
-
-BROWSER="$(pick_browser)"
-if [ -z "$BROWSER" ]; then
-  echo "Minerva: no browser found. sudo apt install chromium openbox" >&2
-  exit 1
-fi
-
 # A session bus is required by the autostarted services (dunst, polkit).
-# Display managers provide one; start a private bus when they don't
-# (same guard every proven X session script carries).
 if [ -z "${DBUS_SESSION_BUS_ADDRESS:-}" ] && command -v dbus-launch >/dev/null 2>&1; then
   eval "$(dbus-launch --exit-with-session)" 2>/dev/null
   export DBUS_SESSION_BUS_ADDRESS
   log "dbus: no session bus inherited - launched a private one"
 fi
 
-# Openbox environment-file convention (system then user), like openbox-session.
 for envf in /etc/xdg/openbox/environment "${XDG_CONFIG_HOME:-$HOME/.config}/openbox/environment"; do
   # shellcheck disable=SC1090
   [ -r "$envf" ] && . "$envf"
 done
 
-# X resources, like /etc/X11/Xsession does.
 if command -v xrdb >/dev/null 2>&1 && [ -f "$HOME/.Xresources" ]; then
   xrdb -merge "$HOME/.Xresources" 2>/dev/null
 fi
@@ -122,183 +123,7 @@ fi
 export XDG_CURRENT_DESKTOP=Minerva
 systemctl --user import-environment DISPLAY XDG_CURRENT_DESKTOP DBUS_SESSION_BUS_ADDRESS 2>/dev/null || true
 
-# Session mode + screen size are decided HERE, before the daemon starts:
-# minerva-sessiond snapshots MINERVA_SESSION_MODE from its own environment at
-# startup and refuses win_op/exec ("not in x11 session mode") unless it read
-# "x11". 0.5.5 exported it *after* start_daemon, so every real VM ran with the
-# daemon in "dev" mode and the shell degraded to its offline toy catalogue —
-# a desktop that looked like Minerva but launched nothing. Never again.
-MULTIWIN=no
-if [ -n "${DISPLAY:-}" ] && command -v openbox >/dev/null 2>&1; then MULTIWIN=yes; fi
-MINERVA_SESSION_MODE="$([ "$MULTIWIN" = yes ] && echo x11 || echo kiosk)"
-export MINERVA_SESSION_MODE
-
-SCREEN_W=1920
-SCREEN_H=1080
-if command -v xrandr >/dev/null 2>&1; then
-  dims="$(xrandr 2>/dev/null | awk '/\*/ {print $1; exit}')"
-  case "$dims" in *x*) SCREEN_W="${dims%%x*}"; SCREEN_H="${dims##*x}" ;; esac
-elif command -v xdpyinfo >/dev/null 2>&1; then
-  dims="$(xdpyinfo 2>/dev/null | awk '/dimensions:/ {print $2; exit}')"
-  case "$dims" in *x*) SCREEN_W="${dims%%x*}"; SCREEN_H="${dims##*x}" ;; esac
-fi
-log "screen ${SCREEN_W}x${SCREEN_H} mode=$MINERVA_SESSION_MODE"
-
-# ---------------------------------------------------------------- openbox cfg
-write_openbox_config() {
-  OB_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/openbox"
-  mkdir -p "$OB_DIR"
-  if [ -f "$OB_DIR/rc.xml" ] && ! grep -q "minerva-generated" "$OB_DIR/rc.xml" 2>/dev/null; then
-    cp "$OB_DIR/rc.xml" "$OB_DIR/rc.xml.pre-minerva" 2>/dev/null
-  fi
-  cat >"$OB_DIR/rc.xml" <<RCEOF
-<?xml version="1.0" encoding="UTF-8"?>
-<!-- minerva-generated: rewritten at every login by /usr/bin/minerva-session -->
-<openbox_config xmlns="http://openbox.org/3.4/rc">
-  <resistance><strength>10</strength><screen_edge_strength>20</screen_edge_strength></resistance>
-  <focus><focusNew>yes</focusNew><followMouse>no</followMouse><focusLast>yes</focusLast><raiseOnFocus>yes</raiseOnFocus></focus>
-  <theme><name>Minerva</name><titleLayout>C</titleLayout><keepBorder>yes</keepBorder><hideDisabled>no</hideDisabled><animateIconify>no</animateIconify></theme>
-  <desktops><number>4</number><firstdesk>1</firstdesk><names><name>1</name><name>2</name><name>3</name><name>4</name></names></desktops>
-  <resize><popupShow>Nonpixel</popupShow><popupPosition>Center</popupPosition></resize>
-  <margins><top>0</top><bottom>0</bottom><left>0</left><right>0</right></margins>
-  <keyboard>
-    <keybind key="A-Tab"><action name="NextWindow"><allDesktops>yes</allDesktops></action></keybind>
-    <keybind key="A-S-Tab"><action name="PreviousWindow"><allDesktops>yes</allDesktops></action></keybind>
-    <keybind key="A-F4"><action name="Close"/></keybind>
-    <keybind key="Super_L"><action name="Execute"><command>minerva-ctl event launcher</command></action></keybind>
-    <keybind key="Super_R"><action name="Execute"><command>minerva-ctl event launcher</command></action></keybind>
-    <keybind key="W-space"><action name="ShowMenu"><menu>root-menu</menu></action></keybind>
-    <keybind key="C-A-T"><action name="Execute"><command>minerva-ctl app terminal</command></action></keybind>
-    <keybind key="W-t"><action name="Execute"><command>minerva-ctl app terminal</command></action></keybind>
-    <keybind key="W-e"><action name="Execute"><command>minerva-ctl app files</command></action></keybind>
-    <keybind key="W-w"><action name="Execute"><command>minerva-ctl app web</command></action></keybind>
-    <keybind key="W-d"><action name="ToggleShowDesktop"/></keybind>
-    <keybind key="W-l"><action name="Execute"><command>minerva-ctl cmd lock</command></action></keybind>
-    <keybind key="W-Left"><action name="GoToDesktop"><to>previous</to></action></keybind>
-    <keybind key="W-Right"><action name="GoToDesktop"><to>next</to></action></keybind>
-    <keybind key="Print"><action name="Execute"><command>sh -c "mkdir -p \$HOME/Pictures/Screenshots &amp;&amp; scrot \$HOME/Pictures/Screenshots/minerva-%Y%m%d-%H%M%S.png 2>/dev/null || import -window root \$HOME/Pictures/Screenshots/minerva-%Y%m%d-%H%M%S.png 2>/dev/null || true"</command></action></keybind>
-    <keybind key="XF86AudioRaiseVolume"><action name="Execute"><command>sh -c "pactl set-sink-volume @DEFAULT_SINK@ +5% 2>/dev/null || amixer -q set Master 5%+"</command></action></keybind>
-    <keybind key="XF86AudioLowerVolume"><action name="Execute"><command>sh -c "pactl set-sink-volume @DEFAULT_SINK@ -5% 2>/dev/null || amixer -q set Master 5%-"</command></action></keybind>
-    <keybind key="XF86AudioMute"><action name="Execute"><command>sh -c "pactl set-sink-mute @DEFAULT_SINK@ toggle 2>/dev/null || amixer -q set Master toggle"</command></action></keybind>
-  </keyboard>
-  <mouse>
-    <context name="Frame">
-      <mousebind button="A-Left" action="Drag"><action name="Move"/></mousebind>
-      <mousebind button="A-Right" action="Drag"><action name="Resize"/></mousebind>
-    </context>
-    <context name="Root">
-      <mousebind button="Right" action="Press"><action name="ShowMenu"><menu>root-menu</menu></action></mousebind>
-    </context>
-  </mouse>
-  <applications>
-    <!-- the fullscreen shell surface: never decorated, never in the taskbar,
-         always underneath real app windows (matched by WM_CLASS or title) -->
-    <application name="minerva-shell" class="minerva-shell">
-      <decor>no</decor><layer>below</layer>
-      <skip_taskbar>yes</skip_taskbar><skip_pager>yes</skip_pager>
-    </application>
-    <application title="Minerva">
-      <decor>no</decor><layer>below</layer>
-      <skip_taskbar>yes</skip_taskbar><skip_pager>yes</skip_pager>
-    </application>
-  </applications>
-</openbox_config>
-RCEOF
-  if [ -f "$SHAREDIR/openbox/menu.xml" ] && [ ! -f "$OB_DIR/menu.xml" ]; then
-    cp "$SHAREDIR/openbox/menu.xml" "$OB_DIR/menu.xml"
-  fi
-  write_openbox_theme
-  log "openbox config written to $OB_DIR"
-}
-
-# A real Openbox theme so app window chrome matches the Minerva look.
-write_openbox_theme() {
-  TH_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/themes/Minerva/openbox-3"
-  mkdir -p "$TH_DIR" 2>/dev/null || return 0
-  cat >"$TH_DIR/themerc" <<THEMEEOF
-# Minerva — slim dark Openbox theme (generated by minerva-session)
-*.border.width: 1
-*.padding.width: 8
-*.padding.height: 6
-*.justify: left
-window.active.border.color: #2a2f40
-window.inactive.border.color: #1d2129
-window.active.title.bg: flat solid
-window.active.title.bg.color: #171a24
-window.inactive.title.bg: flat solid
-window.inactive.title.bg.color: #14161e
-window.active.label.bg: parentrelative
-window.inactive.label.bg: parentrelative
-window.active.label.text.color: #e8eaf2
-window.inactive.label.text.color: #8b93ad
-window.active.handle.bg: flat solid
-window.active.handle.bg.color: #171a24
-window.inactive.handle.bg: flat solid
-window.inactive.handle.bg.color: #14161e
-window.active.grip.bg: parentrelative
-window.inactive.grip.bg: parentrelative
-window.handle.width: 0
-window.client.padding.width: 0
-window.client.padding.height: 0
-window.active.button.close.unpressed.image.color: #aab3d0
-window.active.button.close.pressed.image.color: #ffffff
-window.active.button.close.hover.image.color: #ff6b6b
-window.active.button.close.disabled.image.color: #3a3f52
-window.inactive.button.close.unpressed.image.color: #5b627a
-window.active.button.max.unpressed.image.color: #aab3d0
-window.active.button.max.pressed.image.color: #ffffff
-window.inactive.button.max.unpressed.image.color: #5b627a
-menu.border.width: 1
-menu.overlap: 0
-menu.border.color: #2a2f40
-menu.title.bg: flat solid
-menu.title.bg.color: #171a24
-menu.title.text.color: #e8eaf2
-menu.items.bg: flat solid
-menu.items.bg.color: #12141d
-menu.items.text.color: #dfe3f0
-menu.items.active.bg: flat solid
-menu.items.active.bg.color: #a80030
-menu.items.active.text.color: #ffffff
-menu.separator.color: #2a2f40
-menu.separator.padding.height: 4
-osd.border.width: 1
-osd.border.color: #2a2f40
-osd.bg: flat solid
-osd.bg.color: #12141d
-osd.text.color: #e8eaf2
-osd.hilight.bg: flat solid
-osd.hilight.bg.color: #a80030
-THEMEEOF
-}
-
-# Keeps the fullscreen shell surface pinned no matter what any client does:
-# below every app window, fullscreen, out of taskbar/pager. Re-applied every
-# few seconds via EWMH so a missed WM rule or a chromium quirk can never
-# unpin it. This is the belt-and-braces the earlier releases were missing.
-enforce_shell_surface() {
-  command -v wmctrl >/dev/null 2>&1 || { log "enforcer: wmctrl missing, skipped"; return 0; }
-  command -v xprop >/dev/null 2>&1 || { log "enforcer: xprop missing, skipped"; return 0; }
-  sleep 2
-  while :; do
-    for id in $(xprop -root _NET_CLIENT_LIST 2>/dev/null | tr ',' '\n' | sed -n 's/.*#x\?\([0-9a-fA-F]*\).*/\1/p'); do
-      t="$(xprop -id 0x$id _NET_WM_NAME 2>/dev/null | sed -n 's/.*"\(.*\)".*/\1/p' | head -1)"
-      if [ "$t" = "Minerva" ]; then
-        wmctrl -i -r 0x$id -b add,below,skip_taskbar,skip_pager 2>/dev/null
-        wmctrl -i -r 0x$id -b add,fullscreen 2>/dev/null
-        # geometry pin ONLY when the fullscreen state did not take effect —
-        # re-applying -e to an already-fullscreen window makes openbox
-        # reconfigure it every tick (visible flicker / input stalls).
-        if ! xprop -id 0x$id _NET_WM_STATE 2>/dev/null | grep -q FULLSCREEN; then
-          wmctrl -i -r 0x$id -e 0,0,0,"$SCREEN_W","$SCREEN_H" 2>/dev/null
-        fi
-      fi
-    done
-    sleep 3
-  done
-}
-
-# ------------------------------------------------------------------- daemon
+# ------------------------------------------------------------ daemon (first)
 start_daemon
 watch_daemon() {
   while :; do
@@ -324,111 +149,219 @@ while [ "$i" -lt 50 ]; do
 done
 [ "$i" -lt 50 ] || log "warning: daemon not healthy after 10 s"
 
+# ------------------------------------------- mask XFCE parts we replace
+# xfce4-session autostarts its own panel/desktop/power-manager; Minerva
+# replaces all three. Hidden=true in the user autostart dir disables an XDG
+# autostart entry per spec — boring, standard, no patches involved.
+mask_autostart() {
+  AD="${XDG_CONFIG_HOME:-$HOME/.config}/autostart"
+  mkdir -p "$AD" 2>/dev/null || return 0
+  for d in xfce4-panel xfdesktop xfce4-screensaver xfce4-power-manager; do
+    cat >"$AD/$d.desktop" <<EOF
+[Desktop Entry]
+Hidden=true
+X-Minerva-Override=masked by the Minerva session
+EOF
+  done
+  log "xfce autostart overrides written to $AD"
+}
+
+# ------------------------------------------------------- openbox fallback cfg
+write_openbox_config() {
+  OB_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/openbox"
+  mkdir -p "$OB_DIR"
+  if [ -f "$OB_DIR/rc.xml" ] && ! grep -q "minerva-generated" "$OB_DIR/rc.xml" 2>/dev/null; then
+    cp "$OB_DIR/rc.xml" "$OB_DIR/rc.xml.pre-minerva" 2>/dev/null
+  fi
+  cat >"$OB_DIR/rc.xml" <<RCEOF
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- minerva-generated: rewritten at every login by /usr/bin/minerva-session -->
+<openbox_config xmlns="http://openbox.org/3.4/rc">
+  <resistance><strength>10</strength><screen_edge_strength>20</screen_edge_strength></resistance>
+  <focus><focusNew>yes</focusNew><followMouse>no</followMouse><focusLast>yes</focusLast><raiseOnFocus>yes</raiseOnFocus></focus>
+  <theme><name>Minerva</name><titleLayout>C</titleLayout><keepBorder>yes</keepBorder><hideDisabled>no</hideDisabled><animateIconify>no</animateIconify></theme>
+  <desktops><number>4</number><firstdesk>1</firstdesk><names><name>1</name><name>2</name><name>3</name><name>4</name></names></desktops>
+  <resize><popupShow>Nonpixel</popupShow><popupPosition>Center</popupPosition></resize>
+  <margins><top>0</top><bottom>0</bottom><left>0</left><right>0</right></margins>
+  <keyboard>
+    <keybind key="A-Tab"><action name="NextWindow"><allDesktops>yes</allDesktops></action></keybind>
+    <keybind key="A-S-Tab"><action name="PreviousWindow"><allDesktops>yes</allDesktops></action></keybind>
+    <keybind key="A-F4"><action name="Close"/></keybind>
+    <keybind key="Super_L"><action name="Execute"><command>minerva-ctl event launcher</command></action></keybind>
+    <keybind key="Super_R"><action name="Execute"><command>minerva-ctl event launcher</command></action></keybind>
+    <keybind key="C-A-T"><action name="Execute"><command>minerva-ctl app terminal</command></action></keybind>
+    <keybind key="W-e"><action name="Execute"><command>minerva-ctl app files</command></action></keybind>
+    <keybind key="W-w"><action name="Execute"><command>minerva-ctl event overview</command></action></keybind>
+    <keybind key="W-d"><action name="ToggleShowDesktop"/></keybind>
+    <keybind key="W-l"><action name="Execute"><command>minerva-ctl cmd lock</command></action></keybind>
+    <keybind key="W-Left"><action name="GoToDesktop"><to>previous</to></action></keybind>
+    <keybind key="W-Right"><action name="GoToDesktop"><to>next</to></action></keybind>
+  </keyboard>
+  <mouse>
+    <context name="Frame">
+      <mousebind button="A-Left" action="Drag"><action name="Move"/></mousebind>
+      <mousebind button="A-Right" action="Drag"><action name="Resize"/></mousebind>
+    </context>
+    <context name="Root">
+      <mousebind button="Right" action="Press"><action name="ShowMenu"><menu>root-menu</menu></mousebind>
+    </context>
+  </mouse>
+  <applications>
+    <application name="minerva-shell" class="minerva-shell">
+      <decor>no</decor><layer>below</layer>
+      <skip_taskbar>yes</skip_taskbar><skip_pager>yes</skip_pager>
+    </application>
+    <application title="Minerva">
+      <decor>no</decor><layer>below</layer>
+      <skip_taskbar>yes</skip_taskbar><skip_pager>yes</skip_pager>
+    </application>
+  </applications>
+</openbox_config>
+RCEOF
+  if [ -f "$SHAREDIR/openbox/menu.xml" ] && [ ! -f "$OB_DIR/menu.xml" ]; then
+    cp "$SHAREDIR/openbox/menu.xml" "$OB_DIR/menu.xml"
+  fi
+  log "openbox config written to $OB_DIR"
+}
+
+# Keeps the fullscreen shell surface pinned no matter which WM is in charge:
+# below every app window, fullscreen (geometry pin only while the fullscreen
+# state is missing — re-applying -e to a fullscreen window makes the WM
+# reconfigure it every tick).
+enforce_shell_surface() {
+  command -v wmctrl >/dev/null 2>&1 || { log "enforcer: wmctrl missing, skipped"; return 0; }
+  command -v xprop >/dev/null 2>&1 || { log "enforcer: xprop missing, skipped"; return 0; }
+  sleep 2
+  while :; do
+    for id in $(xprop -root _NET_CLIENT_LIST 2>/dev/null | tr ',' '\n' | sed -n 's/.*#x\?\([0-9a-fA-F]*\).*/\1/p'); do
+      t="$(xprop -id 0x$id _NET_WM_NAME 2>/dev/null | sed -n 's/.*"\(.*\)".*/\1/p' | head -1)"
+      if [ "$t" = "Minerva" ]; then
+        wmctrl -i -r 0x"$id" -b add,below,skip_taskbar,skip_pager 2>/dev/null
+        wmctrl -i -r 0x"$id" -b add,fullscreen 2>/dev/null
+        if ! xprop -id 0x"$id" _NET_WM_STATE 2>/dev/null | grep -q FULLSCREEN; then
+          wmctrl -i -r 0x"$id" -e 0,0,0,"$SCREEN_W","$SCREEN_H" 2>/dev/null
+        fi
+      fi
+    done
+    sleep 3
+  done
+}
+
+watch_wm() {
+  while :; do
+    if ! pgrep -x xfwm4 >/dev/null 2>&1 && ! pgrep -x openbox >/dev/null 2>&1; then
+      log "no window manager alive — starting xfwm4"
+      xfwm4 >>"$LOG" 2>&1 &
+    fi
+    sleep 4
+  done
+}
+
 CHROME_FLAGS="--no-first-run --no-default-browser-check --disable-session-crashed-bubble --disable-dev-shm-usage --password-store=basic --disable-translate --check-for-update-interval=31536000 --force-device-scale-factor=1"
 
-# The single fullscreen shell surface. --kiosk makes chromium fullscreen by
-# itself on any stack, so no window-manager cooperation is required for the
-# desktop surface to cover the screen correctly.
 shell_window() {
-  log "shell surface: $BROWSER --kiosk $URL"
-  case "$(basename "$BROWSER")" in
+  log "shell surface (direct): $MINERVA_BROWSER --kiosk $URL"
+  case "$(basename "${MINERVA_BROWSER:-none}")" in
     chromium|chromium-browser)
-      "$BROWSER" --kiosk --wm-class=minerva-shell --class=minerva-shell "$URL" \
-        --user-data-dir="$SHELL_PROFILE" $CHROME_FLAGS >>"$LOG" 2>&1 &
+      "$MINERVA_BROWSER" --kiosk --wm-class=minerva-shell --class=minerva-shell "$URL" \
+        --user-data-dir="$RT/shell-direct" $CHROME_FLAGS >>"$LOG" 2>&1 &
       SHELL_PID=$! ;;
     firefox-esr|firefox)
-      "$BROWSER" --kiosk "$URL" >>"$LOG" 2>&1 &
+      "$MINERVA_BROWSER" --kiosk "$URL" >>"$LOG" 2>&1 &
       SHELL_PID=$! ;;
     *)
-      "$BROWSER" "$URL" >>"$LOG" 2>&1 &
+      "$MINERVA_BROWSER" "$URL" >>"$LOG" 2>&1 &
       SHELL_PID=$! ;;
   esac
 }
 
-if [ "$MULTIWIN" = yes ]; then
-  export MINERVA_BROWSER="$BROWSER" MINERVA_SESSION_PID=$$
-  log "session mode: x11 (openbox + fullscreen shell surface + real app windows)"
-  # Clean up stale EWMH root properties left by the display manager or a
-  # previous WM (proven step from openbox-session).
-  xprop -root -remove _NET_NUMBER_OF_DESKTOPS \
-        -remove _NET_DESKTOP_NAMES \
-        -remove _NET_CURRENT_DESKTOP 2>/dev/null
-  write_openbox_config
-  start_wm() {
-    # --startup is the stock openbox hook: minerva-autostart runs once the
-    # WM is ready, exactly where a plain openbox session runs its autostart.
-    openbox --sm-disable --startup "minerva-autostart" >>"$LOG" 2>&1 &
-    WM_PID=$!
-    echo "$WM_PID" >"$STATE/wm.pid"
-  }
-  start_wm
-  sleep 0.5
-  if ! kill -0 "$WM_PID" 2>/dev/null; then
-    log "FATAL?: openbox exited immediately - retrying once"
-    start_wm
-    sleep 0.5
-    kill -0 "$WM_PID" 2>/dev/null || log "FATAL: openbox not running; app windows unmanaged"
+pick_browser() {
+  if [ -n "${MINERVA_BROWSER:-}" ] && command -v "$MINERVA_BROWSER" >/dev/null 2>&1; then
+    echo "$MINERVA_BROWSER"; return 0
   fi
-  log "openbox pid=$WM_PID"
-  watch_wm() {
-    while :; do
-      pid="$(cat "$STATE/wm.pid" 2>/dev/null || true)"
-      if [ -n "$pid" ] && ! kill -0 "$pid" 2>/dev/null; then
-        log "openbox died - restarting with autostart hook"
-        start_wm
-      fi
-      sleep 2
-    done
-  }
-  watch_wm &
-  WM_WATCH_PID=$!
-  # paint the root window before the shell surface maps (no flash of grey)
-  xsetroot -solid '#0b1020' 2>/dev/null
-  shell_window
-  {
-    echo "mode=$MINERVA_SESSION_MODE screen=${SCREEN_W}x${SCREEN_H} browser=$BROWSER"
-    echo "daemon_pid=$(cat "$PIDFILE" 2>/dev/null) wm_pid=$(cat "$STATE/wm.pid" 2>/dev/null)"
-    echo "ready_at=$(date '+%Y-%m-%d %H:%M:%S')"
-  } >"$STATE/ready"
-  enforce_shell_surface &
-  ENFORCE_PID=$!
-  log "shell-surface enforcer pid=$ENFORCE_PID"
-else
-  export MINERVA_BROWSER="$BROWSER" MINERVA_SESSION_PID=$$
-  log "session mode: kiosk single-window ($BROWSER)"
-  case "$(basename "$BROWSER")" in
-    chromium|chromium-browser) shell_window ;;
-    firefox-esr|firefox) shell_window ;;
-    *)
-      if [ -n "${DISPLAY:-}" ]; then
-        shell_window
-      elif command -v cage >/dev/null 2>&1; then
-        cage -- "$BROWSER" "$URL" >>"$LOG" 2>&1 & SHELL_PID=$!
-      elif command -v weston >/dev/null 2>&1; then
-        weston --socket=minerva -- "$BROWSER" "$URL" >>"$LOG" 2>&1 & SHELL_PID=$!
-      else
-        echo "Minerva: no compositor. sudo apt install cage" >&2
-        exit 1
-      fi ;;
-  esac
-fi
+  for b in chromium chromium-browser firefox-esr firefox epiphany-browser; do
+    command -v "$b" >/dev/null 2>&1 && { echo "$b"; return 0; }
+  done
+  echo ""
+}
+export MINERVA_BROWSER="$(pick_browser)" MINERVA_SESSION_PID=$$
+[ -n "$MINERVA_BROWSER" ] || { echo "Minerva: no browser found. sudo apt install chromium" >&2; exit 1; }
 
-# A crashed shell surface must not throw the user back to the login screen:
-# respawn it a few times. Logout paths set EXITING via the cleanup trap.
-shell_tries=0
+xsetroot -solid '#0b1020' 2>/dev/null
+
+case "$BASE" in
+  xfce)
+    log "base: xfce4-session + xfwm4 (wrapper mode)"
+    mask_autostart
+    xprop -root -remove _NET_NUMBER_OF_DESKTOPS \
+          -remove _NET_DESKTOP_NAMES \
+          -remove _NET_CURRENT_DESKTOP 2>/dev/null
+    xfce4-session >>"$LOG" 2>&1 &
+    BASE_PID=$!
+    watch_wm &
+    WM_WATCH_PID=$!
+    enforce_shell_surface &
+    ENFORCE_PID=$!
+    ;;
+  openbox)
+    log "base: openbox (fallback wrapper mode)"
+    mask_autostart
+    xprop -root -remove _NET_NUMBER_OF_DESKTOPS \
+          -remove _NET_DESKTOP_NAMES \
+          -remove _NET_CURRENT_DESKTOP 2>/dev/null
+    write_openbox_config
+    openbox --sm-disable --startup "minerva-autostart" >>"$LOG" 2>&1 &
+    BASE_PID=$!
+    echo "$BASE_PID" >"$STATE/wm.pid"
+    sleep 0.5
+    if ! kill -0 "$BASE_PID" 2>/dev/null; then
+      log "openbox exited immediately - retrying once"
+      openbox --sm-disable --startup "minerva-autostart" >>"$LOG" 2>&1 &
+      BASE_PID=$!
+    fi
+    enforce_shell_surface &
+    ENFORCE_PID=$!
+    ;;
+  *)
+    log "base: kiosk single-window ($MINERVA_BROWSER)"
+    SHELL_PID=""
+    shell_window
+    ;;
+esac
+
+{
+  echo "mode=$MINERVA_SESSION_MODE base=$BASE screen=${SCREEN_W}x${SCREEN_H} browser=$MINERVA_BROWSER"
+  echo "daemon_pid=$(cat "$PIDFILE" 2>/dev/null) base_pid=$BASE_PID"
+  echo "ready_at=$(date '+%Y-%m-%d %H:%M:%S')"
+} >"$STATE/ready"
+
+# The base session exiting = logout. Respawn it once if it dies on its feet.
+base_tries=0
 EXIT_CODE=0
-while :; do
-  wait "$SHELL_PID"
-  EXIT_CODE=$?
-  [ "$EXITING" = yes ] && break
-  shell_tries=$((shell_tries + 1))
-  if [ "$shell_tries" -ge 4 ]; then
-    log "shell surface failed $shell_tries times — giving up"
-    break
-  fi
-  log "shell surface exited code=$EXIT_CODE — respawning (try $shell_tries)"
-  sleep 1
-  shell_window
-done
+if [ -n "$BASE_PID" ]; then
+  while :; do
+    wait "$BASE_PID"
+    EXIT_CODE=$?
+    [ "$EXITING" = yes ] && break
+    base_tries=$((base_tries + 1))
+    if [ "$base_tries" -ge 2 ]; then
+      log "base session failed $base_tries times — giving up"
+      break
+    fi
+    log "base session exited code=$EXIT_CODE — respawning (try $base_tries)"
+    sleep 1
+    if [ "$BASE" = xfce ]; then xfce4-session >>"$LOG" 2>&1 & else openbox --sm-disable --startup "minerva-autostart" >>"$LOG" 2>&1 & fi
+    BASE_PID=$!
+  done
+else
+  while :; do
+    wait "$SHELL_PID"
+    EXIT_CODE=$?
+    [ "$EXITING" = yes ] && break
+    log "shell surface exited code=$EXIT_CODE — respawning"
+    sleep 1
+    shell_window
+  done
+fi
 log "session exit code=$EXIT_CODE"
 exit "$EXIT_CODE"

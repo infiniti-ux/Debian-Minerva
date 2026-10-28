@@ -18,6 +18,8 @@ override_dh_auto_install:
 	install -Dm755 session/minerva-ctl debian/debian-minerva/usr/bin/minerva-ctl
 	install -Dm755 session/minerva-doctor debian/debian-minerva/usr/bin/minerva-doctor
 	install -Dm755 session/minerva-autostart debian/debian-minerva/usr/bin/minerva-autostart
+	install -Dm755 session/minerva-shell-start debian/debian-minerva/usr/bin/minerva-shell-start
+	install -Dm644 session/minerva-shell.desktop debian/debian-minerva/etc/xdg/autostart/minerva-shell.desktop
 	mkdir -p debian/debian-minerva/usr/share/minerva/web
 	cp -r web/. debian/debian-minerva/usr/share/minerva/web/
 	install -Dm644 session/openbox/menu.xml debian/debian-minerva/usr/share/minerva/openbox/menu.xml

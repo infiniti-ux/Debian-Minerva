@@ -50,7 +50,7 @@
 
   function defaultState() {
     return {
-      de: 'Debian Minerva', version: '0.5.7', seq: 1,
+      de: 'Debian Minerva', version: '0.6.0', seq: 1,
       theme: 'light', accent: '#a80030', wallpaper: 'swirl', scale: 1,
       volume: 0.65, brightness: 0.82,
       active_workspace: 0, show_overview: false, show_launcher: false,
@@ -1175,6 +1175,11 @@
     mode: function () { return MODE; },
     isX11: function () { return X11; }
   };
+
+  // a shell exception must never be invisible: surface it as a toast
+  window.addEventListener('error', function (e) {
+    try { toast('Shell error: ' + (e.message || 'unknown')); } catch (err) {}
+  });
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start);
   else start();

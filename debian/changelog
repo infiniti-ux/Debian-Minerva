@@ -1,3 +1,25 @@
+debian-minerva (0.6.0) unstable; urgency=medium
+
+  * WRAPPER BASE, by user directive: the session machinery is now delegated
+    to proven Debian components instead of hand-rolled bootstrap.
+    xfce4-session + xfwm4 run the session (window management, autostart,
+    polkit, save-session); xfdesktop/xfce4-panel/xfce4-screensaver/
+    xfce4-power-manager are masked via standard Hidden=true autostart
+    overrides; the Minerva shell surface starts through XDG autostart
+    (minerva-shell.desktop, OnlyShowIn=Minerva) like any other session app.
+    openbox remains the fallback base, single kiosk window the last resort.
+  * minerva-shell-start: launches the kiosk shell from autostart, applies
+    idempotent xfconf shortcuts (Super = launcher, Super+W = overview,
+    Ctrl+Alt+T = terminal, Super+E = files), and runs a loud self-check 8 s
+    after start — any missing subsystem writes ~/minerva-report.txt AND
+    pops an xmessage dialog, so a broken login can never be silent again.
+  * enforcer kept (conditional geometry pin) and now WM-agnostic.
+  * doctor: base-session checks (xfce4-session / xfwm4 / openbox).
+  * shell: window.onerror surfaces a toast instead of dying quietly.
+  * Depends: xfce4-session, xfwm4, xfconf; openbox moved to Recommends.
+
+ -- Minerva Team <minerva@localhost>  Wed, 28 Oct 2026 09:05:00 +0700
+
 debian-minerva (0.5.7) unstable; urgency=medium
 
   * Enforcer no longer fights the window manager: the wmctrl geometry pin is

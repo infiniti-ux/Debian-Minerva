@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=Minerva Shell
+Comment=Fullscreen Minerva desktop surface (started by the Minerva session)
+Exec=/usr/bin/minerva-shell-start
+Icon=minerva
+OnlyShowIn=Minerva
+X-GNOME-Autostart-Phase=Desktop
+X-GNOME-Autostart-Notify=true
+X-XFCE-Autostart-Override=false
+NoDisplay=true
