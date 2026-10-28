@@ -1,0 +1,11 @@
+#!/bin/sh
+# minerva-verify — one command, one paste: the complete evidence bundle.
+# Runs the install component matrix and the live-session report, prints both
+# and saves them to ~/minerva-report.txt for bug reports.
+set -u
+{
+  echo "===== minerva-verify $(date '+%Y-%m-%d %H:%M:%S') ====="
+  minerva-bootstrap --check 2>&1
+  echo
+  minerva-doctor 2>&1
+} | tee "$HOME/minerva-report.txt"

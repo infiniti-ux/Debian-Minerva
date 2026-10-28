@@ -166,3 +166,26 @@ Release artefacts: tagged .deb + checksums (post-1.0 signing key).
   (regenerated at next login; a pre-Minerva backup is kept as
   `rc.xml.pre-minerva`).
 * Remove Minerva completely: `sudo apt remove --purge debian-minerva`.
+
+## 0.6.x — wrapper base architecture (current)
+
+The session machinery is delegated to proven Debian components; Minerva owns
+the surface and the system layer only:
+
+- **xfce4-session + xfwm4** run the session (autostart, polkit, save-session,
+  window management). xfdesktop / xfce4-panel / xfce4-screensaver /
+  xfce4-power-manager are masked with standard `Hidden=true` autostart
+  overrides; **openbox** is the fallback base, a single kiosk window the last
+  resort.
+- **minerva-session** starts the daemon (mode exported before daemon start),
+  writes xfconf per-channel defaults, masks XFCE parts, starts the base, then
+  starts **minerva-shell-start** directly (browser pick, kiosk flags, respawn
+  loop, loud self-check: report file + xmessage on any missing subsystem).
+- **Lock** is a real locker: the shell draws the lock surface, the daemon
+  flips `$XDG_RUNTIME_DIR/minerva/locked`, and the session enforcer restacks
+  the shell above every window while the flag exists.
+- Evidence tooling: `minerva-bootstrap --check/--fix` (install matrix),
+  `minerva-doctor` (live session), `minerva-verify` (both, teed to
+  ~/minerva-report.txt).
+- Recipe parity with the canonical "build a DE from scratch" tutorials and
+  Omarchy-style builds is mapped step by step in `docs/PARITY.md`.

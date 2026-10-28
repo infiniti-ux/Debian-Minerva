@@ -29,7 +29,7 @@ const BANNER: &str = r#"
     | |/ /  __/ (_| | | (_| | | | | (_| | |  | | | | | |  __/ / / \ V /| | | (_| |
     |___/ \___|\__, |_|\__,_|_| |_|\__,_|_|  |_|_|_| |_|\___| \_/   \_/ |_|  \__,_|
                 __/ |
-               |___/     Debian Minerva · Rust desktop environment · v0.6.2
+               |___/     Debian Minerva · Rust desktop environment · v0.6.3
 "#;
 
 fn main() {

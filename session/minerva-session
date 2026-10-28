@@ -12,9 +12,10 @@
 #   * last resort   : single kiosk window (cage/weston/no-WM boxes);
 #   * minerva-sessiond : Rust daemon — session state, app launching, system
 #                     layer (volume, Wi-Fi, resolution, brightness, power);
-#   * the shell surface itself is started through XDG autostart
-#     (minerva-shell.desktop, OnlyShowIn=Minerva) by whichever base runs, so
-#     every branch gets it through the desktop's own autostart machinery.
+#   * the shell surface is started DIRECTLY by this script through
+#     minerva-shell-start in every base branch (0.6.1+: delegating the launch
+#     to XDG autostart proved unreliable), with respawn and a loud
+#     self-check inside minerva-shell-start.
 set -u
 
 PORT="${MINERVA_PORT:-47801}"
@@ -272,7 +273,13 @@ enforce_shell_surface() {
     for id in $(xprop -root _NET_CLIENT_LIST 2>/dev/null | tr ',' '\n' | sed -n 's/.*#x\?\([0-9a-fA-F]*\).*/\1/p'); do
       t="$(xprop -id 0x$id _NET_WM_NAME 2>/dev/null | sed -n 's/.*"\(.*\)".*/\1/p' | head -1)"
       if [ "$t" = "Minerva" ]; then
-        wmctrl -i -r 0x"$id" -b add,below,skip_taskbar,skip_pager 2>/dev/null
+        if [ -f "$RT/locked" ]; then
+          wmctrl -i -r 0x"$id" -b remove,below 2>/dev/null
+          wmctrl -i -r 0x"$id" -b add,above,skip_taskbar,skip_pager 2>/dev/null
+        else
+          wmctrl -i -r 0x"$id" -b remove,above 2>/dev/null
+          wmctrl -i -r 0x"$id" -b add,below,skip_taskbar,skip_pager 2>/dev/null
+        fi
         wmctrl -i -r 0x"$id" -b add,fullscreen 2>/dev/null
         if ! xprop -id 0x"$id" _NET_WM_STATE 2>/dev/null | grep -q FULLSCREEN; then
           wmctrl -i -r 0x"$id" -e 0,0,0,"$SCREEN_W","$SCREEN_H" 2>/dev/null

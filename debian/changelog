@@ -1,3 +1,21 @@
+debian-minerva (0.6.3) unstable; urgency=medium
+
+  * Finish-everything pass, no half-done corners left:
+      - LOCK IS A REAL LOCK NOW: the old cmd only blanked the monitor
+        (loginctl lock-session had no listener, dpms fallback = screensaver,
+        not a lock). The shell now draws its own locker surface in every
+        mode, the daemon flips $XDG_RUNTIME_DIR/minerva/locked, and the
+        session enforcer restacks the shell ABOVE every window while the
+        flag exists; unlock restores the below layer. Super+L and the power
+        menu lock both work on a real session;
+      - minerva-verify: ONE command for the whole evidence bundle
+        (bootstrap matrix + doctor), teed to ~/minerva-report.txt;
+      - README status block and docs/PRODUCT.md rewritten for the 0.6.x
+        wrapper-base architecture (both were stale at 0.5.x);
+      - stale session-script header comment corrected.
+
+ -- Minerva Team <minerva@localhost>  Wed, 28 Oct 2026 12:30:00 +0700
+
 debian-minerva (0.6.2) unstable; urgency=medium
 
   * Tutorial-parity pass (Debian Wiki DesktopEnvironment + the LearnLinuxTV
