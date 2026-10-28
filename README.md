@@ -6,11 +6,14 @@ systems language. The UI is a near-1:1 recreation of the leaked
 app drawer, desktop folders, compact quick settings, virtual desktops, freeform
 windows — with **all Google branding removed** and replaced by Debian Minerva.
 
-> **Status:** installable desktop environment. The `.deb` adds a **Minerva**
-> session to GDM/LightDM/SDDM. Logging in starts a real X11 desktop: Openbox
-> as window manager, real applications as real windows, and the Minerva shell
-> as native X surfaces (desktop layer, always-on-top status bar, full-width
-> taskbar dock, launcher, popovers, settings) with real app windows on top.
+> **Status:** installable desktop environment (0.6.x, wrapper base). The
+> `.deb` adds a **Minerva** session to GDM/LightDM/SDDM. Logging in starts a
+> real X11 desktop on proven Debian machinery — xfce4-session + xfwm4
+> (openbox fallback) — with the Aluminium-accurate Minerva shell as the one
+> fullscreen surface (status bar, taskbar dock, launcher, quick settings,
+> notifications, settings, lock screen) and real applications as real
+> windows on top. Verify any install with one command: `minerva-verify`
+> (component matrix + live session report, saved to ~/minerva-report.txt).
 
 ---
 

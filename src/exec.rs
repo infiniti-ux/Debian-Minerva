@@ -410,7 +410,16 @@ impl Exec {
                 }
             }
             "lock" => {
-                spawn_detached("loginctl lock-session 2>/dev/null || xset dpms force off");
+                // the shell draws its own locker surface; the session
+                // enforcer restacks it ABOVE every window while this flag
+                // exists (loginctl lock-session had no listener, and the old
+                // dpms fallback only blanked the monitor — not a lock)
+                let _ = std::fs::create_dir_all(&self.runtime_dir);
+                let _ = std::fs::write(format!("{}/locked", self.runtime_dir), b"1");
+                ok_json(vec![])
+            }
+            "unlock" => {
+                let _ = std::fs::remove_file(format!("{}/locked", self.runtime_dir));
                 ok_json(vec![])
             }
             "reboot" => {

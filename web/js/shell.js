@@ -50,7 +50,7 @@
 
   function defaultState() {
     return {
-      de: 'Debian Minerva', version: '0.6.2', seq: 1,
+      de: 'Debian Minerva', version: '0.6.3', seq: 1,
       theme: 'light', accent: '#a80030', wallpaper: 'swirl', scale: 1,
       volume: 0.65, brightness: 0.82,
       active_workspace: 0, show_overview: false, show_launcher: false,
@@ -849,8 +849,9 @@
   }
 
   function power(action) {
-    if (X11) { API.cmd(action).catch(function () { toast('Power action failed: ' + action); }); return; }
+    if (X11 && action !== 'lock') { API.cmd(action).catch(function () { toast('Power action failed: ' + action); }); return; }
     if (action === 'lock') {
+      if (X11) API.cmd('lock').catch(function () {});
       var l = $('#lock-screen');
       l.innerHTML = '<div class="lock-clock" id="lock-clock"></div><div class="lock-date" id="lock-date"></div><img src="assets/logo.svg" alt=""><div style="font-size:12px;color:#8f9dc4;margin-top:10px">Click anywhere to unlock</div>';
       l.classList.remove('hidden');
@@ -1051,6 +1052,7 @@
     $('#lock-screen').addEventListener('click', function () {
       this.classList.add('hidden');
       clearInterval(Number(this.dataset.timer));
+      if (X11) API.cmd('unlock').catch(function () {});
     });
 
     // keyboard
