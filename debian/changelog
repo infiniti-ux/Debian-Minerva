@@ -1,3 +1,27 @@
+debian-minerva (0.8.0) unstable; urgency=medium
+
+  * Aluminium fidelity + motion pass ("plek ketiplek", no debate):
+      - Inter bundled as woff2 (400/500/600/700): the shell no longer
+        falls back to DejaVu Sans on machines without Inter — the single
+        biggest "looks like a web page" tell is gone;
+      - surfaces now match the leak frames exactly: pale-lavender
+        Material panels (drawer, quick settings, notifications, settings,
+        menus) over the dark wallpaper in BOTH themes; only status bar
+        and dock follow wallpaper tone; desktop search pill light;
+      - dock is the Aluminium floating pill: centered, 10px off the
+        bottom, rounded 20px, blurred, with cursor-distance icon
+        magnification (transform-only, 60fps on software GL) and round
+        running indicators; window area extends under it;
+      - spring motion system: --spring cubic-bezier overshoot on drawer
+        (with per-icon stagger), panels, toasts; animated panel exits
+        (.closing) through the central close helpers; press states
+        (scale .94) on every interactive control; slim overlay
+        scrollbars; prefers-reduced-motion honored globally;
+      - slimmer 34px status bar; compact quick-settings head like leak
+        frame 08 (no giant clock); drawer grid 5 columns, radius 28px.
+
+ -- Minerva Team <minerva@localhost>  Wed, 28 Oct 2026 14:40:00 +0700
+
 debian-minerva (0.7.1) unstable; urgency=medium
 
   * Comot pass — take the good parts from the big DEs onto the light base:
