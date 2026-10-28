@@ -1,3 +1,25 @@
+debian-minerva (0.7.0) unstable; urgency=medium
+
+  * Polish release — the desktop must look and feel like one product:
+      - NEW Minerva xfwm4 theme shipped in /usr/share/themes: Aluminium
+        dark titlebars with rounded top corners, soft window shadows,
+        minimal |HMC buttons drawn to match the shell;
+      - xfwm4 + xsettings xfconf channels are now force-rewritten on
+        EVERY login (theme=Minerva, compositing on, mouse-follow window
+        placement, no workspace wrap, Adwaita-dark GTK, window buttons
+        right-aligned, font antialiasing) — upgrades always take effect;
+      - GTK_THEME=Adwaita:dark + QT_QPA_PLATFORMTHEME=gtk exported by the
+        session so every app window matches the shell;
+      - anti-leak guard: xfdesktop/xfce4-panel that slip past the
+        autostart mask are killed within seconds — the grey XFCE desktop
+        can never show through again;
+      - chromium moved from Recommends to Depends: the shell surface is
+        now guaranteed to have a browser on any install;
+      - xterm themed via X resources merged at session start (Aluminium
+        colors, DejaVu Sans Mono, 256color, no scrollbar).
+
+ -- Minerva Team <minerva@localhost>  Wed, 28 Oct 2026 13:10:00 +0700
+
 debian-minerva (0.6.3) unstable; urgency=medium
 
   * Finish-everything pass, no half-done corners left:

@@ -1,0 +1,12 @@
+! Minerva X resources — Aluminium-matched terminal, merged at session start
+xterm*background: #14161f
+xterm*foreground: #e8eaf2
+xterm*cursorColor: #a80030
+xterm*highlightColor: #2c3143
+xterm*highlightTextColor: #ffffff
+xterm*faceName: DejaVu Sans Mono
+xterm*faceSize: 11
+xterm*renderFont: true
+xterm*termName: xterm-256color
+xterm*ScrollBar: false
+xterm*charClass: 33:48,35:48,37:48,43:48,45-47:48,64:48,95:48,126:48
