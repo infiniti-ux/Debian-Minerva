@@ -51,8 +51,19 @@ else
   warn "cannot compare session mode (no API or curl)"
 fi
 
-echo "[window manager]"
-if pgrep -x openbox >/dev/null 2>&1; then ok "openbox running"; else bad "openbox NOT running — app windows unmanaged"; fi
+echo "[base session]"
+if pgrep -x xfce4-session >/dev/null 2>&1; then
+  ok "xfce4-session running (wrapper base)"
+elif pgrep -x openbox >/dev/null 2>&1; then
+  ok "openbox running (fallback base)"
+else
+  bad "no base session running (xfce4-session/openbox) — logout and pick Minerva again"
+fi
+if pgrep -x xfwm4 >/dev/null 2>&1 || pgrep -x openbox >/dev/null 2>&1; then
+  ok "window manager alive (xfwm4/openbox)"
+else
+  bad "no window manager — app windows unmanaged"
+fi
 if command -v wmctrl >/dev/null 2>&1 && command -v xprop >/dev/null 2>&1; then
   ok "wmctrl + xprop present (taskbar/enforcer)"
 else

@@ -1,0 +1,141 @@
+#!/bin/sh
+# minerva-shell-start — launches the Minerva shell surface from XDG autostart
+# (xfce4-session or the openbox fallback chain) and refuses to fail silently:
+# any missing subsystem becomes ~/minerva-report.txt plus an on-screen
+# xmessage dialog, per the project's "failures are never silent" rule.
+set -u
+
+RT="${XDG_RUNTIME_DIR:-/tmp}/minerva"
+ENVF="$RT/session.env"
+STATE="${XDG_STATE_HOME:-$HOME/.local/state}/minerva"
+mkdir -p "$STATE" 2>/dev/null || STATE="/tmp/minerva-$USER"
+mkdir -p "$STATE"
+LOG="$STATE/session.log"
+REPORT="$HOME/minerva-report.txt"
+
+log() { echo "[shell-start] $*" >>"$LOG"; }
+
+# the session script mints the token; wait briefly for it
+i=0
+while [ "$i" -lt 50 ]; do
+  [ -r "$ENVF" ] && break
+  i=$((i + 1)); sleep 0.2
+done
+if [ -r "$ENVF" ]; then
+  # shellcheck disable=SC1090
+  . "$ENVF"
+else
+  log "WARNING: no session.env at $ENVF"
+fi
+PORT="${MINERVA_PORT:-47801}"
+TOKEN="${MINERVA_TOKEN:-}"
+URL="http://127.0.0.1:$PORT/?token=$TOKEN"
+
+SCREEN_W=1920
+SCREEN_H=1080
+if command -v xrandr >/dev/null 2>&1; then
+  dims="$(xrandr 2>/dev/null | awk '/\*/ {print $1; exit}')"
+  case "$dims" in *x*) SCREEN_W="${dims%%x*}"; SCREEN_H="${dims##*x}" ;; esac
+fi
+
+pick_browser() {
+  if [ -n "${MINERVA_BROWSER:-}" ] && command -v "$MINERVA_BROWSER" >/dev/null 2>&1; then
+    echo "$MINERVA_BROWSER"; return 0
+  fi
+  for b in chromium chromium-browser firefox-esr firefox; do
+    command -v "$b" >/dev/null 2>&1 && { echo "$b"; return 0; }
+  done
+  echo ""
+}
+BROWSER="$(pick_browser)"
+
+# ---- xfconf hardening (idempotent; xfce4-session brings the xfconf daemon) --
+xfce_setup() {
+  command -v xfconf-query >/dev/null 2>&1 || return 0
+  i=0
+  while [ "$i" -lt 20 ]; do
+    xfconf-query -c xfce4-session -p /general/SaveOnExit >/dev/null 2>&1 && break
+    i=$((i + 1)); sleep 0.5
+  done
+  set_one() {
+    # set_one <channel> <property> <value>  (only when absent)
+    xfconf-query -c "$1" -p "$2" >/dev/null 2>&1 && return 0
+    xfconf-query -c "$1" -p "$2" -t string -s "$3" --create >/dev/null 2>&1
+  }
+  set_one xfce4-session /general/SaveOnExit false
+  xfconf-query -c xfce4-session -p /general/SaveOnExit -t bool -s false --create >/dev/null 2>&1
+  set_one xfce4-keyboard-shortcuts /commands/custom/Super_L "minerva-ctl event launcher"
+  set_one xfce4-keyboard-shortcuts /commands/custom/Super_R "minerva-ctl event launcher"
+  set_one xfce4-keyboard-shortcuts "/commands/custom/<Primary><Alt>t" "minerva-ctl app terminal"
+  set_one xfce4-keyboard-shortcuts "/commands/custom/<Super>e" "minerva-ctl app files"
+  set_one xfce4-keyboard-shortcuts "/commands/custom/<Super>w" "minerva-ctl event overview"
+  log "xfconf shortcuts applied"
+}
+xfce_setup &
+
+CHROME_FLAGS="--no-first-run --no-default-browser-check --disable-session-crashed-bubble --disable-dev-shm-usage --password-store=basic --disable-translate --check-for-update-interval=31536000 --force-device-scale-factor=1"
+SHELL_PROFILE="$RT/shell-autostart"
+
+shell_once() {
+  case "$(basename "$BROWSER")" in
+    chromium|chromium-browser)
+      "$BROWSER" --kiosk --wm-class=minerva-shell --class=minerva-shell "$URL" \
+        --user-data-dir="$SHELL_PROFILE" $CHROME_FLAGS >>"$LOG" 2>&1 ;;
+    firefox-esr|firefox)
+      "$BROWSER" --kiosk "$URL" >>"$LOG" 2>&1 ;;
+    *)
+      "$BROWSER" "$URL" >>"$LOG" 2>&1 ;;
+  esac
+}
+
+# ---- loud self-check: anything missing becomes a report + on-screen dialog --
+self_check() {
+  fails=""
+  if command -v curl >/dev/null 2>&1; then
+    curl -fsS -o /dev/null "http://127.0.0.1:$PORT/api/v1/health" 2>/dev/null || fails="$fails daemon-not-answering"
+  fi
+  pgrep -x xfwm4 >/dev/null 2>&1 || pgrep -x openbox >/dev/null 2>&1 || fails="$fails no-window-manager"
+  if command -v xprop >/dev/null 2>&1; then
+    found=no
+    for id in $(xprop -root _NET_CLIENT_LIST 2>/dev/null | tr ',' '\n' | sed -n 's/.*#x\?\([0-9a-fA-F]*\).*/\1/p'); do
+      if xprop -id 0x"$id" _NET_WM_NAME 2>/dev/null | grep -q '"Minerva"'; then found=yes; break; fi
+    done
+    [ "$found" = yes ] || fails="$fails shell-window-missing"
+  fi
+  [ -z "$fails" ] && return 0
+  {
+    echo "Minerva self-check FAILED at $(date '+%Y-%m-%d %H:%M:%S')"
+    echo "missing:$fails"
+    echo "screen: ${SCREEN_W}x${SCREEN_H} browser: ${BROWSER:-none}"
+    echo "---- last 15 session log lines ----"
+    tail -15 "$LOG" 2>/dev/null
+    echo "---- fix hints ----"
+    echo "run: minerva-doctor     (full subsystem report)"
+    echo "reinstall: sudo apt install --reinstall debian-minerva"
+  } >"$REPORT"
+  log "self-check failed:$fails — wrote $REPORT"
+  if command -v xmessage >/dev/null 2>&1; then
+    xmessage -center -button OK -file "$REPORT" >/dev/null 2>&1 &
+  fi
+}
+
+if [ -z "$BROWSER" ]; then
+  echo "Minerva: no browser found. sudo apt install chromium" >&2
+  log "FATAL: no browser"
+  exit 1
+fi
+
+tries=0
+while :; do
+  shell_once &
+  SPID=$!
+  log "shell surface started pid=$SPID ($BROWSER)"
+  [ "$tries" -eq 0 ] && { sleep 8; self_check; }
+  wait "$SPID"
+  code=$?
+  tries=$((tries + 1))
+  if [ "$tries" -ge 4 ]; then log "shell surface failed $tries times — giving up"; break; fi
+  log "shell surface exited code=$code — respawning (try $tries)"
+  sleep 1
+done
+exit 0
