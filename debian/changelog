@@ -1,3 +1,33 @@
+debian-minerva (0.9.0) unstable; urgency=medium
+
+  * Platform-contracts release — the layer that makes a shell feel like a
+    desktop instead of a web page riding one (research-driven, see
+    docs/PARITY.md "Platform contracts"):
+      - systemd USER units for dunst / parcellite / polkit agent, wanted by
+        graphical-session.target, with ExecStartPre dunstrc generation and
+        on-failure restarts; vendor preset 90-minerva.preset enables them
+        for every user; shell-start now defers to the units and keeps the
+        old spawn only as fallback;
+      - xdg-desktop-portal + GTK backend recommended, with Minerva's
+        preference file (minerva-portals.conf): sandboxed apps get real
+        file pickers / screenshots / screen-share / settings portals;
+      - XDG_CURRENT_DESKTOP=Minerva + XDG_SESSION_DESKTOP exported session
+        wide, written into session.env, and handed to systemd --user via
+        import-environment so user units inherit the contracts;
+      - per-toolkit X11 enforcement inside the session (GDK_BACKEND,
+        CLUTTER_BACKEND, QT_QPA_PLATFORM, MOZ_ENABLE_WAYLAND,
+        SAL_USE_VCLPLUGIN) + GTK_USE_PORTAL=1 + cursor theme/size;
+      - postinst writes system-wide /etc/xdg/mimeapps.list defaults
+        (browser/editor/files) when absent;
+      - dunstrc generation extracted to /usr/bin/minerva-dunstrc so the
+        unit path and the fallback path style identically;
+      - bootstrap matrix +5 rows (portal daemon, portal backend, user
+        units, vendor preset, MIME defaults); doctor +[platform contracts]
+        section (identity, portals conf, units, preset, MIME, live unit
+        state); verify dumps the contract env into the report.
+
+ -- Minerva Team <minerva@localhost>  Wed, 28 Oct 2026 15:30:00 +0700
+
 debian-minerva (0.8.0) unstable; urgency=medium
 
   * Aluminium fidelity + motion pass ("plek ketiplek", no debate):

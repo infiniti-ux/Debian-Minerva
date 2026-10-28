@@ -14,6 +14,8 @@ windows — with **all Google branding removed** and replaced by Debian Minerva.
 > notifications, settings, lock screen) and real applications as real
 > windows on top. Verify any install with one command: `minerva-verify`
 > (component matrix + live session report, saved to ~/minerva-report.txt).
+> Services run as systemd user units; sandboxed apps see a real desktop
+> through xdg-desktop-portal with Minerva's backend preference.
 
 ---
 
@@ -21,6 +23,7 @@ windows — with **all Google branding removed** and replaced by Debian Minerva.
 
 | Layer | Language | What it does |
 |---|---|---|
+| Platform contracts | units/conf | systemd user units, portal preference, MIME defaults, X11 toolkit enforcement |
 | `minerva-sessiond` | **Rust (std only, zero crates)** | Authoritative session state + the real system layer: spawns real applications (from the installed `.desktop` catalogue), opens shell panels as real X windows, controls volume (pactl), Wi-Fi (nmcli), resolution (xrandr), brightness, night light and session power. HTTP/JSON API, VFS, terminal |
 | Session (`minerva-session`) | POSIX sh | Starts Openbox (real WM), the daemon (loopback + per-session token), and the shell windows; supervises crashes; tears down on logout |
 | Minerva Shell | HTML / CSS / vanilla JS | Renders each X surface (desktop, top bar, dock, launcher, Wi-Fi/audio/battery/power popovers, notifications, settings). Built-in JS apps act as fallbacks when no real application is installed |

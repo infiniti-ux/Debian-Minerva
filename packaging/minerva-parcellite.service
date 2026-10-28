@@ -1,0 +1,13 @@
+[Unit]
+Description=Minerva clipboard manager (parcellite)
+PartOf=graphical-session.target
+After=graphical-session.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/parcellite
+Restart=on-failure
+RestartSec=1
+
+[Install]
+WantedBy=graphical-session.target

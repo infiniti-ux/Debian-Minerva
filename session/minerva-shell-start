@@ -96,39 +96,30 @@ self_check() {
 }
 
 start_services() {
-  if command -v dunst >/dev/null 2>&1 && ! pgrep -x dunst >/dev/null 2>&1; then
-    DC="${XDG_CONFIG_HOME:-$HOME/.config}/dunst"
-    mkdir -p "$DC" 2>/dev/null
-    [ -f "$DC/dunstrc" ] || cat >"$DC/dunstrc" <<'DEOF'
-[global]
-    width = 380
-    height = 120
-    origin = top-right
-    offset = 14x54
-    notification_limit = 5
-    background = "#1f2231"
-    foreground = "#f0f1fa"
-    highlight = "#a80030"
-    font = Inter 10
-    corner_radius = 12
-    frame_color = "#2a2f40"
-    frame_width = 1
-    timeout = 6
-DEOF
+  if systemctl --user is-active --quiet minerva-dunst.service 2>/dev/null; then
+    log "dunst managed by systemd user unit"
+  elif command -v dunst >/dev/null 2>&1 && ! pgrep -x dunst >/dev/null 2>&1; then
+    minerva-dunstrc
     dunst >/dev/null 2>&1 &
-    log "dunst started"
+    log "dunst started (fallback spawn)"
   fi
-  if command -v parcellite >/dev/null 2>&1 && ! pgrep -x parcellite >/dev/null 2>&1; then
+  if systemctl --user is-active --quiet minerva-parcellite.service 2>/dev/null; then
+    log "parcellite managed by systemd user unit"
+  elif command -v parcellite >/dev/null 2>&1 && ! pgrep -x parcellite >/dev/null 2>&1; then
     parcellite >/dev/null 2>&1 &
-    log "parcellite started"
+    log "parcellite started (fallback spawn)"
   fi
-  for agent in /usr/lib/policykit-1-gnome/polkit-gnome-authentication-agent-1                /usr/lib/polkit-gnome/polkit-gnome-authentication-agent-1                /usr/libexec/polkit-gnome-authentication-agent-1; do
-    if [ -x "$agent" ] && ! pgrep -f polkit-gnome-authentication >/dev/null 2>&1; then
-      "$agent" >/dev/null 2>&1 &
-      log "polkit agent: $agent"
-      break
-    fi
-  done
+  if systemctl --user is-active --quiet minerva-polkit.service 2>/dev/null; then
+    log "polkit agent managed by systemd user unit"
+  else
+    for agent in /usr/lib/policykit-1-gnome/polkit-gnome-authentication-agent-1                  /usr/lib/polkit-gnome/polkit-gnome-authentication-agent-1                  /usr/libexec/polkit-gnome-authentication-agent-1; do
+      if [ -x "$agent" ] && ! pgrep -f polkit-gnome-authentication >/dev/null 2>&1; then
+        "$agent" >/dev/null 2>&1 &
+        log "polkit agent: $agent (fallback spawn)"
+        break
+      fi
+    done
+  fi
   if command -v xrdb >/dev/null 2>&1 && [ -f /usr/share/minerva/xresources ]; then
     xrdb -merge /usr/share/minerva/xresources 2>/dev/null && log "xresources merged (xterm themed)"
   fi

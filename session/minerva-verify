@@ -5,6 +5,8 @@
 set -u
 {
   echo "===== minerva-verify $(date '+%Y-%m-%d %H:%M:%S') ====="
+  env | grep -E '^(XDG_CURRENT_DESKTOP|XDG_SESSION_DESKTOP|GDK_BACKEND|QT_QPA_PLATFORM|GTK_USE_PORTAL)=' | sed 's/^/env: /'
+  echo
   minerva-bootstrap --check 2>&1
   echo
   minerva-doctor 2>&1

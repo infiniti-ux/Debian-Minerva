@@ -1,0 +1,13 @@
+[Unit]
+Description=Minerva polkit authentication agent
+PartOf=graphical-session.target
+After=graphical-session.target
+
+[Service]
+Type=simple
+ExecStart=/bin/sh -c 'for p in /usr/lib/policykit-1-gnome/polkit-gnome-authentication-agent-1 /usr/lib/polkit-gnome/polkit-gnome-authentication-agent-1 /usr/libexec/polkit-gnome-authentication-agent-1; do if [ -x "$p" ]; then exec "$p"; fi; done; exit 1'
+Restart=on-failure
+RestartSec=2
+
+[Install]
+WantedBy=graphical-session.target

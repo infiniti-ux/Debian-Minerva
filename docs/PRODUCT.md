@@ -184,8 +184,17 @@ the surface and the system layer only:
 - **Lock** is a real locker: the shell draws the lock surface, the daemon
   flips `$XDG_RUNTIME_DIR/minerva/locked`, and the session enforcer restacks
   the shell above every window while the flag exists.
-- Evidence tooling: `minerva-bootstrap --check/--fix` (install matrix),
-  `minerva-doctor` (live session), `minerva-verify` (both, teed to
-  ~/minerva-report.txt).
+- Desktop services (dunst, parcellite, polkit agent) run as systemd
+  **user** units wanted by `graphical-session.target`, enabled for every
+  user through a vendor preset; `minerva-shell-start` only spawns them as
+  a fallback when the user unit is not active.
+- Platform contracts exported session-wide: `XDG_CURRENT_DESKTOP=Minerva`,
+  portal preference (`minerva-portals.conf` → GTK backend), per-toolkit
+  X11 enforcement (`GDK_BACKEND`, `QT_QPA_PLATFORM`, …), system MIME
+  defaults via postinst.
+- Evidence tooling: `minerva-bootstrap --check/--fix` (install matrix,
+  now including portal/user-unit/preset/MIME rows), `minerva-doctor`
+  (live session + platform-contract checks), `minerva-verify` (both plus
+  the exported contract env, teed to ~/minerva-report.txt).
 - Recipe parity with the canonical "build a DE from scratch" tutorials and
   Omarchy-style builds is mapped step by step in `docs/PARITY.md`.
