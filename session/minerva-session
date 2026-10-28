@@ -176,6 +176,7 @@ XEOF
       <property name="&lt;Primary&gt;&lt;Alt&gt;t" type="string" value="minerva-ctl app terminal"/>
       <property name="&lt;Super&gt;e" type="string" value="minerva-ctl app files"/>
       <property name="&lt;Super&gt;w" type="string" value="minerva-ctl event overview"/>
+      <property name="&lt;Super&gt;l" type="string" value="minerva-ctl cmd lock"/>
       <property name="override" type="bool" value="true"/>
     </property>
   </property>
