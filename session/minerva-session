@@ -71,8 +71,12 @@ chmod 600 "$RT/session.env" 2>/dev/null
 # ---------------------------------------------------------------- base choice
 # minerva-wm is the primary base; MINERVA_BASE / MINERVA_WM are overrides for
 # debugging and for the test suite.
-WM_BIN="${MINERVA_WM:-/usr/bin/minerva-wm}"
-command -v "$WM_BIN" >/dev/null 2>&1 || WM_BIN=""
+WM_BIN="${MINERVA_WM:-minerva-wm}"
+if command -v "$WM_BIN" >/dev/null 2>&1; then
+  WM_BIN="$(command -v "$WM_BIN")"
+else
+  WM_BIN=""
+fi
 MULTIWIN=no
 BASE=kiosk
 if [ -n "${MINERVA_BASE:-}" ]; then

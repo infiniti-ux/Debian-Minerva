@@ -1,3 +1,36 @@
+debian-minerva (0.11.0) trixie; urgency=medium
+
+  * minerva-wm: the native Rust X11 window manager and compositor is now
+    the primary session base. Real WM semantics over libX11 FFI (zero
+    crates): ICCCM/EWMH management, frames with Aluminium-style decorations
+    drawn by the WM itself, click/sloppy focus, Alt-Tab, interactive move
+    and resize, 4 workspaces, show-desktop, minimize/maximize/fullscreen.
+  * Real compositor: COMPOSITE manual redirect + DAMAGE + RENDER painted on
+    the composite overlay window (drop shadows, ARGB clients), with a loud
+    fallback to direct painting when extensions are missing.
+  * The shell surface is native: panel (launcher, title, workspace pips,
+    battery/date/clock), taskbar dock, launcher popup from .desktop files,
+    quick-settings popup (Wi-Fi, Bluetooth, volume, brightness, screen
+    recording via ffmpeg, lock, power) — no browser, no HTML underneath.
+  * minerva-session: native base first; xfce4-session/openbox/kiosk demoted
+    to loud fail-safes (two-strike failover writes ~/minerva-report.txt and
+    a critical notification). MINERVA_BASE/MINERVA_WM overrides for tests.
+  * minerva-ctl: routes launcher/qs/power/lock/session commands to the
+    native WM over the _MINERVA_WM_CMD root property (xprop), daemon POST
+    stays as the fallback.
+  * Packaging: Build-Depends on libx11/libxext/libxrender/libxcomposite/
+    libxdamage/libxfixes dev packages; browser + xfce stack moved from
+    Depends to Recommends (native primary); xterm/curl/x11-utils stay hard.
+  * CI: GitHub Actions compile gate + Xvfb smoke test that drives the WM
+    end to end over the real X11 protocol (manage/configure/focus/
+    fullscreen/maximize/iconify/workspaces/close, asserted).
+  * Tests: native-test.sh (native base contracts, no ghost legacy
+    surfaces); session-env-test.sh now pins the legacy fail-safe path.
+  * Version 0.11.0 everywhere; qa.sh gate keeps crate/core/WM versions in
+    lockstep.
+
+ -- Debian Minerva contributors <minerva@localhost>  Wed, 28 Oct 2026 21:30:00 +0700
+
 debian-minerva (0.10.0) unstable; urgency=medium
 
   * Coverage batch — close the domains where GNOME still led, with real

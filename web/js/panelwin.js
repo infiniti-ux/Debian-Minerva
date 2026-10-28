@@ -1,5 +1,5 @@
 /* Debian Minerva — panel windows & real popovers.
-// version marker: 0.10.0
+// version marker: 0.11.0
  *
  * In a real X11 session every popover (Wi-Fi, audio, battery, calendar,
  * power) and the Settings window is its own X window loaded with a #role
